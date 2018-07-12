@@ -331,6 +331,12 @@
 			"revisionTime": "2016-01-12T19:33:35Z"
 		},
 		{
+			"checksumSHA1": "o0+6uQDysjh6+RsudtQDW3AOwec=",
+			"path": "github.com/joho/godotenv",
+			"revision": "1709ab122c988931ad53508747b3c061400c2984",
+			"revisionTime": "2018-04-05T05:36:34Z"
+		},
+		{
 			"checksumSHA1": "NY84PNFBfNvxJgNEMVKUOJhcVsY=",
 			"path": "github.com/json-iterator/go",
 			"revision": "f2b4162afba35581b6d4a50d3b8f34e33c144682",
