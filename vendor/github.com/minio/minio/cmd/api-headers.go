@@ -54,6 +54,11 @@ func encodeResponse(response interface{}) []byte {
 	return bytesBuffer.Bytes()
 }
 
+// Encodes the response headers into XML format.
+func EncodeResponse(response interface{}) []byte {
+	return encodeResponse(response)
+}
+
 // Encodes the response headers into JSON format.
 func encodeResponseJSON(response interface{}) []byte {
 	var bytesBuffer bytes.Buffer

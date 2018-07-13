@@ -1002,8 +1002,20 @@ func toAPIErrorCode(err error) (apiErr APIErrorCode) {
 	return apiErr
 }
 
+// ToAPIErrorCode - Converts embedded errors. Convenience
+// function written to handle all cases where we have known types of
+// errors returned by underlying layers.
+func ToAPIErrorCode(err error) (apiErr APIErrorCode) {
+	return toAPIErrorCode(err)
+}
+
 // getAPIError provides API Error for input API error code.
 func getAPIError(code APIErrorCode) APIError {
+	return errorCodeResponse[code]
+}
+
+// GetAPIError provides API Error for input API error code.
+func GetAPIError(code APIErrorCode) APIError {
 	return errorCodeResponse[code]
 }
 
@@ -1017,4 +1029,10 @@ func getAPIErrorResponse(err APIError, resource string) APIErrorResponse {
 		RequestID: "3L137",
 		HostID:    "3L137",
 	}
+}
+
+// GetErrorResponse gets in standard error and resource value and
+// provides a encodable populated response values
+func GetAPIErrorResponse(err APIError, resource string) APIErrorResponse {
+	return getAPIErrorResponse(err, resource)
 }
