@@ -337,6 +337,12 @@
 			"revisionTime": "2018-07-26T23:43:49Z"
 		},
 		{
+			"checksumSHA1": "eECxSkwh0WmhLwaxHfkvcLOWS08=",
+			"path": "github.com/jinzhu/gorm/dialects/mysql",
+			"revision": "409121d9e394922787885b001d148a05e3a42b6c",
+			"revisionTime": "2018-07-26T23:43:49Z"
+		},
+		{
 			"checksumSHA1": "4eelJOSLZoDzLuaJvgilOBVNovU=",
 			"path": "github.com/jinzhu/inflection",
 			"revision": "04140366298a54a039076d798123ffa108fff46c",
