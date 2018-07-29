@@ -17,6 +17,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/minio/minio/cmd"
 	"github.com/minio/minio/pkg/event"
+
+	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
 )
 
 var client *redis.Client
@@ -30,14 +32,14 @@ func init() {
 	}
 
 	client = redis.NewClient(&redis.Options{
-		Addr:     getEnv("REDIS_ADDR", "localhost:6789"),
-		Password: getEnv("REDIS_PASSWORD", ""),
+		Addr:     utils.GetEnv("REDIS_ADDR", "localhost:6789"),
+		Password: utils.GetEnv("REDIS_PASSWORD", ""),
 		DB:       0,
 	})
 
 	globalServerConfig = &ServerConfig{
-		region: getEnv("RGW_REGION", "us-east-1"),
-		host:   getEnv("", ""),
+		region: utils.GetEnv("RGW_REGION", "us-east-1"),
+		host:   utils.GetEnv("", ""),
 	}
 }
 
@@ -163,14 +165,6 @@ func (config *ServerConfig) GetRegion() string {
 	return config.region
 }
 
-func getEnv(key, defaultValue string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-
-	return defaultValue
-}
-
 func checkResponse(resp *http.Response, method string, statusCode int) bool {
 	clientReq := resp.Request
 
@@ -258,7 +252,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 }
 
 func reverseProxy() gin.HandlerFunc {
-	target := getEnv("TARGET_HOST", "127.0.0.1")
+	target := utils.GetEnv("TARGET_HOST", "127.0.0.1")
 
 	return func(c *gin.Context) {
 		director := func(req *http.Request) {
