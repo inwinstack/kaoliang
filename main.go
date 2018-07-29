@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
-	"os"
 	"strings"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/minio/minio/cmd"
 	"github.com/minio/minio/pkg/event"
 
+	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
 )
 
@@ -41,6 +41,8 @@ func init() {
 		region: utils.GetEnv("RGW_REGION", "us-east-1"),
 		host:   utils.GetEnv("", ""),
 	}
+
+	models.SetDB()
 }
 
 type Resource struct {
