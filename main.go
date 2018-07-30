@@ -248,7 +248,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 			panic(err)
 		}
 
-		client.RPush(fmt.Sprintf("%s:%s", targetID.ID, targetID.Name), value)
+		client.RPush(fmt.Sprintf("%s:%s:%s", targetID.Service, targetID.ID, targetID.Name), value)
 	}
 
 	return err

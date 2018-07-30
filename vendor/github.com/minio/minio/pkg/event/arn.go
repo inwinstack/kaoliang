@@ -33,7 +33,7 @@ func (arn ARN) String() string {
 		return ""
 	}
 
-	return "arn:aws:sqs:" + arn.region + ":" + arn.TargetID.String()
+	return "arn:aws:" + arn.TargetID.Service + ":" + arn.region + ":" + arn.TargetID.String()
 }
 
 // MarshalXML - encodes to XML data.
@@ -60,7 +60,7 @@ func (arn *ARN) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 // parseARN - parses string to ARN.
 func parseARN(s string) (*ARN, error) {
 	// ARN must be in the format of arn:aws:sqs:<REGION>:<ID>:<TYPE>
-	if !strings.HasPrefix(s, "arn:aws:sqs:") {
+	if !strings.HasPrefix(s, "arn:aws:sqs:") && !strings.HasPrefix(s, "arn:aws:sns:") {
 		return nil, &ErrInvalidARN{s}
 	}
 
@@ -76,8 +76,9 @@ func parseARN(s string) (*ARN, error) {
 	return &ARN{
 		region: tokens[3],
 		TargetID: TargetID{
-			ID:   tokens[4],
-			Name: tokens[5],
+			Service: tokens[2],
+			ID:      tokens[4],
+			Name:    tokens[5],
 		},
 	}, nil
 }
