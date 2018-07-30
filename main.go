@@ -43,6 +43,7 @@ func init() {
 	}
 
 	models.SetDB()
+	models.Migrate()
 }
 
 type Resource struct {
