@@ -149,7 +149,7 @@ func NewRedisTarget(id string, args RedisArgs) (*RedisTarget, error) {
 	}
 
 	return &RedisTarget{
-		id:   event.TargetID{id, "redis"},
+		id:   event.TargetID{"", id, "redis"},
 		args: args,
 		pool: pool,
 	}, nil

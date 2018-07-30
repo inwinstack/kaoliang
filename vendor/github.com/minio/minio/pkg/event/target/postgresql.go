@@ -223,7 +223,7 @@ func NewPostgreSQLTarget(id string, args PostgreSQLArgs) (*PostgreSQLTarget, err
 	}
 
 	return &PostgreSQLTarget{
-		id:         event.TargetID{id, "postgresql"},
+		id:         event.TargetID{"", id, "postgresql"},
 		args:       args,
 		updateStmt: updateStmt,
 		deleteStmt: deleteStmt,

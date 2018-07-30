@@ -138,7 +138,7 @@ func NewNATSTarget(id string, args NATSArgs) (*NATSTarget, error) {
 	}
 
 	return &NATSTarget{
-		id:       event.TargetID{id, "nats"},
+		id:       event.TargetID{"", id, "nats"},
 		args:     args,
 		stanConn: stanConn,
 		natsConn: natsConn,

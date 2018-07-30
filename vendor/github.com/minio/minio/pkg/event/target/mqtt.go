@@ -109,7 +109,7 @@ func NewMQTTTarget(id string, args MQTTArgs) (*MQTTTarget, error) {
 	}
 
 	return &MQTTTarget{
-		id:     event.TargetID{id, "mqtt"},
+		id:     event.TargetID{"", id, "mqtt"},
 		args:   args,
 		client: client,
 	}, nil

@@ -94,7 +94,7 @@ func (target *WebhookTarget) Close() error {
 // NewWebhookTarget - creates new Webhook target.
 func NewWebhookTarget(id string, args WebhookArgs) *WebhookTarget {
 	return &WebhookTarget{
-		id:   event.TargetID{id, "webhook"},
+		id:   event.TargetID{"", id, "webhook"},
 		args: args,
 		httpClient: &http.Client{
 			Transport: &http.Transport{

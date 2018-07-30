@@ -90,7 +90,7 @@ func NewKafkaTarget(id string, args KafkaArgs) (*KafkaTarget, error) {
 	}
 
 	return &KafkaTarget{
-		id:       event.TargetID{id, "kafka"},
+		id:       event.TargetID{"", id, "kafka"},
 		args:     args,
 		producer: producer,
 	}, nil

@@ -216,7 +216,7 @@ func NewMySQLTarget(id string, args MySQLArgs) (*MySQLTarget, error) {
 	}
 
 	return &MySQLTarget{
-		id:         event.TargetID{id, "mysql"},
+		id:         event.TargetID{"", id, "mysql"},
 		args:       args,
 		updateStmt: updateStmt,
 		deleteStmt: deleteStmt,

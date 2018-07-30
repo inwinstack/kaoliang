@@ -143,7 +143,7 @@ func NewAMQPTarget(id string, args AMQPArgs) (*AMQPTarget, error) {
 	}
 
 	return &AMQPTarget{
-		id:   event.TargetID{id, "amqp"},
+		id:   event.TargetID{"", id, "amqp"},
 		args: args,
 		conn: conn,
 	}, nil

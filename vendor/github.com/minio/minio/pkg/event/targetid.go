@@ -24,8 +24,9 @@ import (
 
 // TargetID - holds identification and name strings of notification target.
 type TargetID struct {
-	ID   string
-	Name string
+	Service string
+	ID      string
+	Name    string
 }
 
 // String - returns string representation.
