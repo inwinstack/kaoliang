@@ -48,28 +48,6 @@ func init() {
 	models.Migrate()
 }
 
-type Resource struct {
-	id       event.TargetID
-	sendErr  bool
-	closeErr bool
-}
-
-func (r Resource) ID() event.TargetID {
-	return r.id
-}
-
-func (r Resource) Send(eventData event.Event) error {
-	return nil
-}
-
-func (r Resource) Close() error {
-	if r.closeErr {
-		return errors.New("close error")
-	}
-
-	return nil
-}
-
 var errNoSuchNotifications = errors.New("The specified bucket does not have bucket notifications")
 
 func main() {
