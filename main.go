@@ -42,6 +42,8 @@ func init() {
 		host:   utils.GetEnv("", ""),
 	}
 
+	targetList = event.NewTargetList()
+
 	models.SetDB()
 	models.Migrate()
 }
