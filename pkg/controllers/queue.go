@@ -9,6 +9,24 @@ import (
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
 )
 
+func ListQueues(c *gin.Context) {
+	accountID, err := authenticate(c.Request)
+	if err != nil {
+		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	}
+
+	db := models.GetDB()
+	var queues []models.Resource
+	db.Where(&models.Resource{AccountID: accountID}).Find(&queues)
+
+	body := ListQueuesResponse{}
+	for _, queue := range queues {
+		body.QueueURLs = append(body.QueueURLs, queue.URL())
+	}
+
+	c.XML(http.StatusOK, body)
+}
+
 func CreateQueue(c *gin.Context) {
 	accountID, err := authenticate(c.Request)
 	if err != nil {
