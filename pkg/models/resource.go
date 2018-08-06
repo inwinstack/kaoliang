@@ -1,6 +1,12 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"fmt"
+
+	"github.com/jinzhu/gorm"
+
+	"gitlab.com/stor-inwinstack/kaoliang/pkg/config"
+)
 
 type Service int
 
@@ -15,4 +21,10 @@ type Resource struct {
 	AccountID string
 	Type      string
 	Name      string
+}
+
+func (r Resource) URL() string {
+	config := config.GetServerConfig()
+
+	return fmt.Sprintf("http://%s/%s/%s", config.Host, r.AccountID, r.Name)
 }
