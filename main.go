@@ -108,6 +108,8 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		action := c.Query("Action")
 		switch action {
+		case "ListQueues":
+			controllers.ListQueues(c)
 		case "CreateQueue":
 			controllers.CreateQueue(c)
 		default:
