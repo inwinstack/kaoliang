@@ -27,6 +27,37 @@ func teardown() {
 	db.Exec("TRUNCATE TABLE resources;")
 }
 
+func TestListQueues(t *testing.T) {
+	setup()
+	defer teardown()
+
+	Convey("Given some resource records", t, func() {
+		db := models.GetDB()
+		var queue models.Resource
+
+		for _, name := range []string{"gin", "kaoliang"} {
+			queue = models.Resource{
+				Service:   models.SQS,
+				AccountID: "tester",
+				Name:      name,
+			}
+
+			db.Create(&queue)
+		}
+
+		Convey("When access to list queues controller", func() {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request, _ = http.NewRequest("GET", "/?Action=ListQueues", nil)
+			controllers.ListQueues(c)
+
+			Convey("The status code of response should equal to 200", func() {
+				So(w.Code, ShouldEqual, 200)
+			})
+		})
+	})
+}
+
 func TestCreateQueue(t *testing.T) {
 	setup()
 	defer teardown()
