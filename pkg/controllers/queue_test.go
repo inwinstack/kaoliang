@@ -16,7 +16,7 @@ import (
 
 func setup() {
 	os.Setenv("RGW_DNS_NAME", "cloud.inwinstack.com")
-	os.Setenv("DATABASE_URL", "root:my-secret-pw@tcp(127.0.0.1:3306)/test_kaoliang")
+	os.Setenv("DATABASE_URL", "root:my-secret-pw@tcp(127.0.0.1:3306)/test_kaoliang?charset=utf8&parseTime=True&loc=Local")
 	config.SetServerConfig()
 	models.SetDB()
 	models.Migrate()
