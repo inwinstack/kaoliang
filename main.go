@@ -17,6 +17,7 @@ import (
 	"github.com/minio/minio/cmd"
 	"github.com/minio/minio/pkg/event"
 
+	"gitlab.com/stor-inwinstack/kaoliang/pkg/controllers"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
 )
@@ -100,6 +101,16 @@ func main() {
 
 			c.Status(http.StatusOK)
 		} else {
+			reverseProxy()(c)
+		}
+	})
+
+	r.GET("/", func(c *gin.Context) {
+		action := c.Query("Action")
+		switch action {
+		case "CreateQueue":
+			controllers.CreateQueue(c)
+		default:
 			reverseProxy()(c)
 		}
 	})
