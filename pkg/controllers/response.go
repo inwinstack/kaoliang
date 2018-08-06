@@ -7,6 +7,12 @@ import (
 	"github.com/minio/minio/cmd"
 )
 
+type ListQueuesResponse struct {
+	XMLName   xml.Name `xml:"ListQueuesResponse"`
+	QueueURLs []string `xml:"ListQueuesResult>QueueUrl"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
+}
+
 type CreateQueueResponse struct {
 	XMLName   xml.Name `xml:"CreateQueueResponse"`
 	QueueURL  string   `xml:"CreateQueueResult>QueueUrl"`
