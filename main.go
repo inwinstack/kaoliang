@@ -112,6 +112,8 @@ func main() {
 			controllers.ListQueues(c)
 		case "CreateQueue":
 			controllers.CreateQueue(c)
+		case "DeleteQueue":
+			controllers.DeleteQueue(c)
 		default:
 			reverseProxy()(c)
 		}
