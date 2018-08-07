@@ -76,3 +76,29 @@ func TestCreateQueue(t *testing.T) {
 		})
 	})
 }
+
+func TestDeleteQueue(t *testing.T) {
+	setup()
+	defer teardown()
+
+	Convey("Given a queue", t, func() {
+		db := models.GetDB()
+		queue := models.Resource{
+			Service:   models.SQS,
+			AccountID: "tester",
+			Name:      "kaoliang",
+		}
+		db.Create(&queue)
+
+		Convey("When access to delete queue controller", func() {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request, _ = http.NewRequest("GET", "/?Action=DeleteQueue&Name=kaoliang", nil)
+			controllers.DeleteQueue(c)
+
+			Convey("The status code of response should equal to 200", func() {
+				So(w.Code, ShouldEqual, 200)
+			})
+		})
+	})
+}
