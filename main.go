@@ -16,12 +16,12 @@ import (
 	"github.com/minio/minio/cmd"
 	"github.com/minio/minio/pkg/event"
 
+	"gitlab.com/stor-inwinstack/kaoliang/pkg/config"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/controllers"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
 )
 
-var globalServerConfig *ServerConfig
 var targetList *event.TargetList
 
 func init() {
@@ -30,13 +30,9 @@ func init() {
 		log.Fatal("Error loading .env file.")
 	}
 
-	globalServerConfig = &ServerConfig{
-		region: utils.GetEnv("RGW_REGION", "us-east-1"),
-		host:   utils.GetEnv("", ""),
-	}
-
 	targetList = event.NewTargetList()
 
+	config.SetServerConfig()
 	models.SetDB()
 	models.Migrate()
 	models.SetCache()
@@ -71,11 +67,12 @@ func main() {
 
 	r.PUT("/:bucket", func(c *gin.Context) {
 		bucket := c.Param("bucket")
+		serverConfig := config.GetServerConfig()
 
 		_, notification := c.GetQuery("notification")
 
 		if notification {
-			region := globalServerConfig.getRegion()
+			region := serverConfig.Region
 
 			config, err := event.ParseConfig(c.Request.Body, region, targetList)
 			if err != nil {
@@ -150,15 +147,6 @@ func saveNotificationConfig(conf *event.Config, bucket string) error {
 	return nil
 }
 
-type ServerConfig struct {
-	region string
-	host   string
-}
-
-func (config *ServerConfig) GetRegion() string {
-	return config.region
-}
-
 func checkResponse(resp *http.Response, method string, statusCode int) bool {
 	clientReq := resp.Request
 
@@ -178,15 +166,12 @@ func getObjectName(req *http.Request) (string, string, error) {
 	return bucketName, objectName, nil
 }
 
-func (config *ServerConfig) getRegion() string {
-	return config.region
-}
-
 func sendEvent(resp *http.Response, eventType event.Name) error {
 	clientReq := resp.Request
 	bucketName, objectName, _ := getObjectName(clientReq)
 
 	client := models.GetCache()
+	serverConfig := config.GetServerConfig()
 	nConfig, err := readNotificationConfig(targetList, bucketName)
 	if err != nil {
 		panic(err)
@@ -204,7 +189,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 		newEvent := event.Event{
 			EventVersion: "2.0",
 			EventSource:  "aws:s3",
-			AwsRegion:    globalServerConfig.region,
+			AwsRegion:    serverConfig.Region,
 			EventTime:    eventTime.Format("2006-01-02T15:04:05Z"),
 			EventName:    eventType,
 			UserIdentity: event.Identity{
