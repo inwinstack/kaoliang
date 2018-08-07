@@ -51,3 +51,24 @@ func CreateQueue(c *gin.Context) {
 
 	c.XML(http.StatusCreated, body)
 }
+
+func DeleteQueue(c *gin.Context) {
+	accountID, err := authenticate(c.Request)
+	if err != nil {
+		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	}
+
+	db := models.GetDB()
+	queueName := c.Query("Name")
+	queue := models.Resource{}
+
+	db.Where(models.Resource{Service: models.SQS, AccountID: accountID, Name: queueName}).First(&queue)
+
+	db.Delete(&queue)
+
+	body := DeleteQueueResponse{
+		RequestID: "",
+	}
+
+	c.XML(http.StatusOK, body)
+}
