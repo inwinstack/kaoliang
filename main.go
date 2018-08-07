@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
 	"github.com/joho/godotenv"
 	"github.com/minio/minio/cmd"
 	"github.com/minio/minio/pkg/event"
@@ -22,7 +21,6 @@ import (
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
 )
 
-var client *redis.Client
 var globalServerConfig *ServerConfig
 var targetList *event.TargetList
 
@@ -31,12 +29,6 @@ func init() {
 	if err != nil {
 		log.Fatal("Error loading .env file.")
 	}
-
-	client = redis.NewClient(&redis.Options{
-		Addr:     utils.GetEnv("REDIS_ADDR", "localhost:6789"),
-		Password: utils.GetEnv("REDIS_PASSWORD", ""),
-		DB:       0,
-	})
 
 	globalServerConfig = &ServerConfig{
 		region: utils.GetEnv("RGW_REGION", "us-east-1"),
@@ -47,6 +39,8 @@ func init() {
 
 	models.SetDB()
 	models.Migrate()
+	models.SetCache()
+
 }
 
 var errNoSuchNotifications = errors.New("The specified bucket does not have bucket notifications")
@@ -131,6 +125,7 @@ func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 }
 
 func readNotificationConfig(targetList *event.TargetList, bucket string) (*event.Config, error) {
+	client := models.GetCache()
 	val, err := client.Get(fmt.Sprintf("config:%s", bucket)).Result()
 	if err != nil {
 		return nil, errNoSuchNotifications
@@ -147,6 +142,7 @@ func saveNotificationConfig(conf *event.Config, bucket string) error {
 		return nil
 	}
 
+	client := models.GetCache()
 	if err := client.Set(fmt.Sprintf("config:%s", bucket), output, 0).Err(); err != nil {
 		return nil
 	}
@@ -190,6 +186,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 	clientReq := resp.Request
 	bucketName, objectName, _ := getObjectName(clientReq)
 
+	client := models.GetCache()
 	nConfig, err := readNotificationConfig(targetList, bucketName)
 	if err != nil {
 		panic(err)
