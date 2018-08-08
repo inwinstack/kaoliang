@@ -33,7 +33,7 @@ func CreateQueue(c *gin.Context) {
 		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
 	}
 
-	queueName := c.Query("Name")
+	queueName := c.Query("QueueName")
 	db := models.GetDB()
 
 	queue := models.Resource{
@@ -49,7 +49,7 @@ func CreateQueue(c *gin.Context) {
 		RequestID: "",
 	}
 
-	c.XML(http.StatusCreated, body)
+	c.XML(http.StatusOK, body)
 }
 
 func DeleteQueue(c *gin.Context) {
