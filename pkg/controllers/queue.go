@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
+	"github.com/satori/go.uuid"
 
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
 )
@@ -21,9 +22,15 @@ func ListQueues(c *gin.Context) {
 	var queues []models.Resource
 	db.Where(&models.Resource{AccountID: accountID}).Find(&queues)
 
-	body := ListQueuesResponse{}
+	queueUrls := []string{}
 	for _, queue := range queues {
-		body.QueueURLs = append(body.QueueURLs, queue.URL())
+		queueUrls = append(queueUrls, queue.URL())
+	}
+
+	requestID, _ := uuid.NewV4()
+	body := ListQueuesResponse{
+		QueueURLs: queueUrls,
+		RequestID: requestID.String(),
 	}
 
 	c.XML(http.StatusOK, body)
@@ -46,9 +53,10 @@ func CreateQueue(c *gin.Context) {
 
 	db.Create(&queue)
 
+	requestID, _ := uuid.NewV4()
 	body := CreateQueueResponse{
 		QueueURL:  queue.URL(),
-		RequestID: "",
+		RequestID: requestID.String(),
 	}
 
 	c.XML(http.StatusOK, body)
@@ -70,8 +78,9 @@ func DeleteQueue(c *gin.Context) {
 
 	db.Delete(&queue)
 
+	requestID, _ := uuid.NewV4()
 	body := DeleteQueueResponse{
-		RequestID: "",
+		RequestID: requestID.String(),
 	}
 
 	c.XML(http.StatusOK, body)
@@ -99,20 +108,21 @@ func ReceiveMessage(c *gin.Context) {
 
 	body, _ := redis.RPop(key).Result()
 	body_md5 := md5.Sum([]byte(body))
-	msg_id := "5fea7756-0ea4-451a-a703-a558b933e274"
+	msg_id, _ := uuid.NewV4()
 	receipt_handle := ""
 
 	msg := Message{
-		MessageID:     msg_id,
+		MessageID:     msg_id.String(),
 		ReceiptHandle: receipt_handle,
 		Body:          body,
 		MD5OfBody:     string(body_md5[:]),
 	}
 	msgs := []Message{msg}
 
+	requestID, _ := uuid.NewV4()
 	response := ReceiveMessageResponse{
 		Messages:  msgs,
-		RequestID: "",
+		RequestID: requestID.String(),
 	}
 	c.XML(http.StatusOK, response)
 }

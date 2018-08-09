@@ -877,6 +877,12 @@
 			"revisionTime": "2018-05-24T07:14:09Z"
 		},
 		{
+			"checksumSHA1": "eDQ6f1EsNf+frcRO/9XukSEchm8=",
+			"path": "github.com/satori/go.uuid",
+			"revision": "36e9d2ebbde5e3f13ab2e25625fd453271d6522e",
+			"revisionTime": "2018-01-03T17:44:51Z"
+		},
+		{
 			"checksumSHA1": "llmzhtIUy63V3Pl65RuEn18ck5g=",
 			"path": "github.com/segmentio/go-prompt",
 			"revision": "f0d19b6901ade831d5a3204edc0d6a7d6457fbb2",
