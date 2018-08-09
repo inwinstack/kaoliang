@@ -24,6 +24,20 @@ type DeleteQueueResponse struct {
 	RequestID string   `xml:"ResponseMetadata>RequestId"`
 }
 
+type ReceiveMessageResponse struct {
+	XMLName   xml.Name  `xml:"ReceiveMessageResponse"`
+	Messages  []Message `xml:"ReceiveMessageResult"`
+	RequestID string    `xml:"ResponseMetadata>RequestId"`
+}
+
+type Message struct {
+	XMLName       xml.Name `xml:"Message"`
+	MessageID     string   `xml:"MessageId"`
+	ReceiptHandle string   `xml:"ReceiptHandle"`
+	MD5OfBody     string   `xml:"MD5OfBody"`
+	Body          string   `xml:"Body"`
+}
+
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)
