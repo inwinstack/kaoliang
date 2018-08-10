@@ -39,9 +39,18 @@ func (b DummyBackend) GetUser(r *http.Request) (string, cmd.APIErrorCode) {
 	return "tester", cmd.ErrNone
 }
 
+type CephBackend struct {
+}
+
+func (b CephBackend) GetUser(r *http.Request) (string, cmd.APIErrorCode) {
+	userId, err := cmd.ReqSignatureV4Verify(r, "us-east-1")
+	return userId, err
+}
+
 func SetAuthBackend(backend string) AuthenticationBackend {
 	backends := map[string]AuthenticationBackend{
 		"DummyBackend": DummyBackend{},
+		"CephBackend":  CephBackend{},
 	}
 
 	return backends[backend]
