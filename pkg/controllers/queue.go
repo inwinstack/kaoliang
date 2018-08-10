@@ -117,8 +117,11 @@ func ReceiveMessage(c *gin.Context) {
 	}
 
 	maxMsgNum, err := strconv.Atoi(c.Query("MaxNumberOfMessages"))
-	if err != nil {
+	if err != nil || maxMsgNum <= 0{
 		maxMsgNum = 1
+	}
+	if maxMsgNum > 10 {
+		maxMsgNum = 10
 	}
 
 	redis := models.GetCache()
