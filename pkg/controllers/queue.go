@@ -11,8 +11,8 @@ import (
 
 func ListQueues(c *gin.Context) {
 	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	if err != cmd.ErrNone {
+		writeErrorResponse(c, err)
 	}
 
 	db := models.GetDB()
@@ -29,8 +29,8 @@ func ListQueues(c *gin.Context) {
 
 func CreateQueue(c *gin.Context) {
 	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	if err != cmd.ErrNone {
+		writeErrorResponse(c, err)
 	}
 
 	queueName := c.Query("Name")
@@ -54,8 +54,8 @@ func CreateQueue(c *gin.Context) {
 
 func DeleteQueue(c *gin.Context) {
 	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	if err != cmd.ErrNone {
+		writeErrorResponse(c, err)
 	}
 
 	db := models.GetDB()

@@ -3,6 +3,8 @@ package config
 import (
 	"net/http"
 
+	"github.com/minio/minio/cmd"
+
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
 )
 
@@ -27,14 +29,14 @@ func GetServerConfig() *ServerConfig {
 }
 
 type AuthenticationBackend interface {
-	GetUser(*http.Request) (string, error)
+	GetUser(*http.Request) (string, cmd.APIErrorCode)
 }
 
 type DummyBackend struct {
 }
 
-func (b DummyBackend) GetUser(r *http.Request) (string, error) {
-	return "tester", nil
+func (b DummyBackend) GetUser(r *http.Request) (string, cmd.APIErrorCode) {
+	return "tester", cmd.ErrNone
 }
 
 func SetAuthBackend(backend string) AuthenticationBackend {

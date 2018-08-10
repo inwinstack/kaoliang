@@ -22,6 +22,11 @@ var targetList *event.TargetList
 var errNoSuchNotifications = errors.New("The specified bucket does not have bucket notifications")
 
 func GetBucketNotification(c *gin.Context) {
+	_, err := authenticate(c.Request)
+	if err != cmd.ErrNone {
+		writeErrorResponse(c, err)
+	}
+
 	bucket := c.Param("bucket")
 
 	_, notification := c.GetQuery("notification")
@@ -44,6 +49,11 @@ func GetBucketNotification(c *gin.Context) {
 }
 
 func PutBucketNotification(c *gin.Context) {
+	_, err := authenticate(c.Request)
+	if err != cmd.ErrNone {
+		writeErrorResponse(c, err)
+	}
+
 	bucket := c.Param("bucket")
 	serverConfig := config.GetServerConfig()
 
