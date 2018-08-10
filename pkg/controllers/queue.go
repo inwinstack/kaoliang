@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
@@ -115,21 +116,33 @@ func ReceiveMessage(c *gin.Context) {
 		c.XML(http.StatusOK, nil)
 	}
 
+	maxMsgNum, err := strconv.Atoi(c.Query("MaxNumberOfMessages"))
+	if err != nil || maxMsgNum <= 0{
+		maxMsgNum = 1
+	}
+	if maxMsgNum > 10 {
+		maxMsgNum = 10
+	}
+
 	redis := models.GetCache()
 	key := fmt.Sprintf("sqs:%s:%s", accountID, queueName)
+	bodys, _ := redis.LRange(key, 0, int64(maxMsgNum-1)).Result()
+	redis.LTrim(key, int64(maxMsgNum), -1)
 
-	body, _ := redis.RPop(key).Result()
-	body_md5 := md5.Sum([]byte(body))
-	msg_id, _ := uuid.NewV4()
-	receipt_handle := ""
+	msgs := []Message{}
+	for _, body := range bodys {
+		bodyMd5 := md5.Sum([]byte(body))
+		msgId, _ := uuid.NewV4()
+		receiptHandle := ""
 
-	msg := Message{
-		MessageID:     msg_id.String(),
-		ReceiptHandle: receipt_handle,
-		Body:          body,
-		MD5OfBody:     string(body_md5[:]),
+		msg := Message{
+			MessageID:     msgId.String(),
+			ReceiptHandle: receiptHandle,
+			Body:          body,
+			MD5OfBody:     string(bodyMd5[:]),
+		}
+		msgs = append(msgs, msg)
 	}
-	msgs := []Message{msg}
 
 	requestID, _ := uuid.NewV4()
 	response := ReceiveMessageResponse{
