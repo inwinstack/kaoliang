@@ -124,6 +124,7 @@ func ReceiveMessage(c *gin.Context) {
 	redis := models.GetCache()
 	key := fmt.Sprintf("sqs:%s:%s", accountID, queueName)
 	bodys, _ := redis.LRange(key, 0, int64(maxMsgNum-1)).Result()
+	redis.LTrim(key, int64(maxMsgNum), -1)
 
 	msgs := []Message{}
 	for _, body := range bodys {
