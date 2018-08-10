@@ -38,6 +38,14 @@ type Message struct {
 	Body          string   `xml:"Body"`
 }
 
+type ErrorResponse struct {
+	XMLName   xml.Name `xml:"ErrorResponse"`
+	Type      string   `xml:"Error>Type"`
+	Code      string   `xml:"Error>Code"`
+	Message   string   `xml:"Error>Message"`
+	RequestID string   `xml:"RequestId"`
+}
+
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)

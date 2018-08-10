@@ -51,9 +51,21 @@ func CreateQueue(c *gin.Context) {
 		Name:      queueName,
 	}
 
-	db.Create(&queue)
-
 	requestID, _ := uuid.NewV4()
+
+	// Response Error when queue is exists
+	if !db.Where(&queue).First(&models.Resource{}).RecordNotFound() {
+		body := ErrorResponse {
+			Type: "Sender",
+			Code: "QueueAlreadyExists",
+			Message: "A queue with this name already exists.",
+			RequestID: requestID.String(),
+		}
+		c.XML(http.StatusBadRequest, body)
+		return
+	}
+
+	db.Create(&queue)
 	body := CreateQueueResponse{
 		QueueURL:  queue.URL(),
 		RequestID: requestID.String(),
