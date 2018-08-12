@@ -34,6 +34,8 @@ func main() {
 			controllers.ListTopics(c)
 		case "DeleteTopic":
 			controllers.DeleteTopic(c)
+		case "Subscribe":
+			controllers.Subscribe(c)
 		}
 	})
 
