@@ -16,6 +16,15 @@ const (
 	SNS
 )
 
+func (s Service) String() string {
+	services := map[Service]string{
+		SQS: "sqs",
+		SNS: "sns",
+	}
+
+	return services[s]
+}
+
 func (s *Service) Scan(src interface{}) error {
 	switch src.(type) {
 	case int64:
