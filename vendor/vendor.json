@@ -19,6 +19,18 @@
 			"revisionTime": "2018-05-21T09:56:06Z"
 		},
 		{
+			"checksumSHA1": "fcfxNsCuheCrubAAl6zWgimCnLY=",
+			"path": "github.com/codegangsta/inject",
+			"revision": "33e0aa1cb7c019ccc3fbe049a8262a6403d30504",
+			"revisionTime": "2015-01-14T23:56:00Z"
+		},
+		{
+			"checksumSHA1": "6OZKBZbJ2yrRjgS3cb9hICh7w5M=",
+			"path": "github.com/codeskyblue/go-sh",
+			"revision": "cf804ac79dffabb6b16342e24362cc744afc144f",
+			"revisionTime": "2017-12-28T01:44:52Z"
+		},
+		{
 			"checksumSHA1": "r/rrpdcbdhNCiuy2Gapes3NR+xo=",
 			"path": "github.com/coredns/coredns/plugin/etcd/msg",
 			"revision": "716791aa094b54ea17241112a14eeecac10dcfa5",
