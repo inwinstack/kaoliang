@@ -24,6 +24,12 @@ type DeleteQueueResponse struct {
 	RequestID string   `xml:"ResponseMetadata>RequestId"`
 }
 
+type CreateTopicResponse struct {
+	XMLName   xml.Name `xml:"CreateTopicResponse"`
+	TopicARN  string   `xml:"CreateTopicResult>TopicArn"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
+}
+
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)
