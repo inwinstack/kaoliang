@@ -44,6 +44,13 @@ type DeleteTopicResponse struct {
 	XMLName   xml.Name `xml:"DeleteTopicResponse"`
 	RequestID string   `xml:"ResponseMetadata>RequestId"`
 }
+
+type SubscribeResponse struct {
+	XMLName         xml.Name `xml:"SubscribeResponse"`
+	SubscriptionARN string   `xml:"SubscribeResult>SubscriptionArn"`
+	RequestID       string   `xml:"ResponseMetadata>RequestId"`
+}
+
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)
