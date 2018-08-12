@@ -56,3 +56,30 @@ func ListTopics(c *gin.Context) {
 
 	c.XML(http.StatusOK, body)
 }
+
+func DeleteTopic(c *gin.Context) {
+	_, err := authenticate(c.Request)
+	if err != nil {
+		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	}
+
+	topicARN := c.PostForm("TopicArn")
+	targetTopic, _ := models.ParseARN(topicARN)
+
+	db := models.GetDB()
+	topic := models.Resource{}
+
+	db.Where(models.Resource{
+		Service:   models.SNS,
+		AccountID: targetTopic.AccountID,
+		Name:      targetTopic.Name,
+	}).First(&topic)
+
+	db.Delete(&topic)
+
+	body := DeleteTopicResponse{
+		RequestID: "",
+	}
+
+	c.XML(http.StatusOK, body)
+}
