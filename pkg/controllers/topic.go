@@ -30,3 +30,29 @@ func CreateTopic(c *gin.Context) {
 	}
 	c.XML(http.StatusOK, body)
 }
+
+func ListTopics(c *gin.Context) {
+	accountID, err := authenticate(c.Request)
+	if err != nil {
+		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	}
+
+	db := models.GetDB()
+	topics := []models.Resource{}
+	db.Where(&models.Resource{
+		Service:   models.SNS,
+		AccountID: accountID,
+	}).Find(&topics)
+
+	topicARNs := []TopicARN{}
+	for _, topic := range topics {
+		topicARNs = append(topicARNs, TopicARN{Name: topic.ARN()})
+	}
+
+	body := ListTopicsResponse{
+		TopicARNs: topicARNs,
+		RequestID: "",
+	}
+
+	c.XML(http.StatusOK, body)
+}
