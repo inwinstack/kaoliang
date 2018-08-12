@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
+	"github.com/satori/go.uuid"
+
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
 )
 
@@ -79,6 +81,38 @@ func DeleteTopic(c *gin.Context) {
 
 	body := DeleteTopicResponse{
 		RequestID: "",
+	}
+
+	c.XML(http.StatusOK, body)
+}
+
+func Subscribe(c *gin.Context) {
+	accountID, err := authenticate(c.Request)
+	if err != nil {
+		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	}
+
+	endpointURI := c.PostForm("Endpoint")
+	protocol := c.PostForm("Protocol")
+	topicARN := c.PostForm("TopicArn")
+	targetTopic, _ := models.ParseARN(topicARN)
+	targetTopic.AccountID = accountID
+
+	db := models.GetDB()
+	topic := models.Resource{}
+	db.Where(targetTopic).First(&topic)
+
+	endpointID, _ := uuid.NewV4()
+	db.Model(&topic).Association("Endpoints").Append(models.Endpoint{
+		Protocol: protocol,
+		URI:      endpointURI,
+		Name:     endpointID.String(),
+	})
+
+	RequestID, _ := uuid.NewV4()
+	body := SubscribeResponse{
+		SubscriptionARN: topic.ARN() + "/" + endpointID.String(),
+		RequestID:       RequestID.String(),
 	}
 
 	c.XML(http.StatusOK, body)
