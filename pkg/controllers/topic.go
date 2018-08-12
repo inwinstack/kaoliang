@@ -17,13 +17,13 @@ func CreateTopic(c *gin.Context) {
 	topicName := c.PostForm("Name")
 	db := models.GetDB()
 
-	topic := models.Resource{
+	topic := models.Resource{}
+	db.Where(models.Resource{
 		Service:   models.SNS,
 		AccountID: accountID,
 		Name:      topicName,
-	}
+	}).FirstOrCreate(&topic)
 
-	db.FirstOrCreate(&topic)
 	body := CreateTopicResponse{
 		TopicARN:  topic.ARN(),
 		RequestID: "",
