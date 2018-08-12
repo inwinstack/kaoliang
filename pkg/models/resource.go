@@ -3,6 +3,9 @@ package models
 import (
 	"database/sql/driver"
 	"fmt"
+	"strings"
+
+	"github.com/minio/minio/pkg/event"
 
 	"github.com/jinzhu/gorm"
 
@@ -65,4 +68,25 @@ func ParseService(s string) Service {
 	}
 
 	return services[s]
+}
+
+func ParseARN(s string) (*Resource, error) {
+	if !strings.HasPrefix(s, "arn:aws:sqs") && !strings.HasPrefix(s, "arn:aws:sns") {
+		return nil, &event.ErrInvalidARN{s}
+	}
+
+	tokens := strings.Split(s, ":")
+	if len(tokens) != 6 {
+		return nil, &event.ErrInvalidARN{s}
+	}
+
+	if tokens[4] == "" || tokens[5] == "" {
+		return nil, &event.ErrInvalidARN{s}
+	}
+
+	return &Resource{
+		Service:   ParseService(tokens[2]),
+		AccountID: tokens[4],
+		Name:      tokens[5],
+	}, nil
 }
