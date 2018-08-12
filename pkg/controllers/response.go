@@ -40,6 +40,10 @@ type ListTopicsResponse struct {
 	RequestID string     `xml:"ResponseMetadata>RequestId"`
 }
 
+type DeleteTopicResponse struct {
+	XMLName   xml.Name `xml:"DeleteTopicResponse"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
+}
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)
