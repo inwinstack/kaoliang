@@ -51,3 +51,9 @@ func (r Resource) URL() string {
 
 	return fmt.Sprintf("http://%s/%s/%s", config.Host, r.AccountID, r.Name)
 }
+
+func (r Resource) ARN() string {
+	config := config.GetServerConfig()
+
+	return fmt.Sprintf("arn:aws:%s:%s:%s:%s", r.Service, config.Region, r.AccountID, r.Name)
+}
