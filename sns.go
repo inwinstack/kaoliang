@@ -32,6 +32,8 @@ func main() {
 			controllers.CreateTopic(c)
 		case "ListTopics":
 			controllers.ListTopics(c)
+		case "DeleteTopic":
+			controllers.DeleteTopic(c)
 		}
 	})
 
