@@ -16,6 +16,15 @@ const (
 	SNS
 )
 
+func (s *Service) Scan(src interface{}) error {
+	switch src.(type) {
+	case int64:
+		*s = Service(src.(int64))
+	}
+
+	return nil
+}
+
 func (s Service) Value() (driver.Value, error) {
 	return int64(s), nil
 }
