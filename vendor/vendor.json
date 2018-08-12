@@ -13,6 +13,12 @@
 			"revisionTime": "2018-03-21T16:47:47Z"
 		},
 		{
+			"checksumSHA1": "UA2MTiiUWkvMeAzDZ0f46QAc0No=",
+			"path": "github.com/ceph/go-ceph/rados",
+			"revision": "b2d948844f193f694ddac05f1fd325e91dd2926c",
+			"revisionTime": "2018-07-07T20:21:27Z"
+		},
+		{
 			"checksumSHA1": "sVnLCWoAAMntVXmH4V7eh6dRJhE=",
 			"path": "github.com/cheggaaa/pb",
 			"revision": "2af8bbdea9e99e83b3ac400d8f6b6d1b8cbbf338",
