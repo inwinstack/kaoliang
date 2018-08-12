@@ -47,6 +47,7 @@ type Resource struct {
 	AccountID string
 	Type      string
 	Name      string
+	Endpoints []Endpoint
 }
 
 func (r Resource) URL() string {
