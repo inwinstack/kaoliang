@@ -57,3 +57,12 @@ func (r Resource) ARN() string {
 
 	return fmt.Sprintf("arn:aws:%s:%s:%s:%s", r.Service, config.Region, r.AccountID, r.Name)
 }
+
+func ParseService(s string) Service {
+	services := map[string]Service{
+		"sqs": SQS,
+		"sns": SNS,
+	}
+
+	return services[s]
+}
