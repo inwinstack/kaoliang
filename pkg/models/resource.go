@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql/driver"
 	"fmt"
 
 	"github.com/jinzhu/gorm"
@@ -14,6 +15,10 @@ const (
 	SQS Service = iota + 1
 	SNS
 )
+
+func (s Service) Value() (driver.Value, error) {
+	return int64(s), nil
+}
 
 type Resource struct {
 	gorm.Model
