@@ -30,6 +30,16 @@ type CreateTopicResponse struct {
 	RequestID string   `xml:"ResponseMetadata>RequestId"`
 }
 
+type TopicARN struct {
+	Name string `xml:"TopicArn"`
+}
+
+type ListTopicsResponse struct {
+	XMLName   xml.Name   `xml:"ListTopicsResponse"`
+	TopicARNs []TopicARN `xml:"ListTopicsResult>Topics>member"`
+	RequestID string     `xml:"ResponseMetadata>RequestId"`
+}
+
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)
