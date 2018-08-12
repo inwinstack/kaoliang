@@ -30,6 +30,8 @@ func main() {
 		switch action {
 		case "CreateTopic":
 			controllers.CreateTopic(c)
+		case "ListTopics":
+			controllers.ListTopics(c)
 		}
 	})
 
