@@ -77,7 +77,7 @@ func ParseARN(s string) (*Resource, error) {
 	}
 
 	tokens := strings.Split(s, ":")
-	if len(tokens) != 6 {
+	if len(tokens) != 6 && len(tokens) != 7 {
 		return nil, &event.ErrInvalidARN{s}
 	}
 
