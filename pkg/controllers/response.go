@@ -51,6 +51,19 @@ type SubscribeResponse struct {
 	RequestID       string   `xml:"ResponseMetadata>RequestId"`
 }
 
+type SubscriptionARN struct {
+	TopicARN string `xml:"TopicArn"`
+	Protocol string `xml:"Protocol"`
+	ARN      string `xml:"SubscriptionArn"`
+	Owner    string `xml:"Owner"`
+}
+
+type ListSubscriptionsResponse struct {
+	XMLName          xml.Name          `xml:"ListSubscriptionsResponse"`
+	SubscriptionARNs []SubscriptionARN `xml:"ListSubscriptionsResult>Subscriptions>member"`
+	RequestID        string            `xml:"ResponseMetadata>RequestId"`
+}
+
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)
