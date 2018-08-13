@@ -64,6 +64,11 @@ type ListSubscriptionsResponse struct {
 	RequestID        string            `xml:"ResponseMetadata>RequestId"`
 }
 
+type UnsubscribeResponse struct {
+	XMLName   xml.Name `xml:"UnsubscribeResponse"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
+}
+
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {
 	apiError := cmd.GetAPIError(errorCode)
 	errorResponse := cmd.GetAPIErrorResponse(apiError, c.Request.URL.Path)
