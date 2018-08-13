@@ -38,6 +38,8 @@ func main() {
 			controllers.Subscribe(c)
 		case "ListSubscriptions":
 			controllers.ListSubscriptions(c)
+		case "Unsubscribe":
+			controllers.Unsubscribe(c)
 		}
 	})
 
