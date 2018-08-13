@@ -114,7 +114,7 @@ func Subscribe(c *gin.Context) {
 
 	requestID, _ := uuid.NewV4()
 	body := SubscribeResponse{
-		SubscriptionARN: topic.ARN() + "/" + endpointID.String(),
+		SubscriptionARN: topic.ARN() + ":" + endpointID.String(),
 		RequestID:       requestID.String(),
 	}
 
@@ -140,7 +140,7 @@ func ListSubscriptions(c *gin.Context) {
 				subscriptionARNs = append(subscriptionARNs, SubscriptionARN{
 					TopicARN: topic.ARN(),
 					Protocol: endpoint.Protocol,
-					ARN:      topic.ARN() + "/" + endpoint.Name,
+					ARN:      topic.ARN() + ":" + endpoint.Name,
 					Owner:    topic.AccountID,
 				})
 			}
