@@ -44,6 +44,49 @@ type ErrorResponse struct {
 	Code      string   `xml:"Error>Code"`
 	Message   string   `xml:"Error>Message"`
 	RequestID string   `xml:"RequestId"`
+type CreateTopicResponse struct {
+	XMLName   xml.Name `xml:"CreateTopicResponse"`
+	TopicARN  string   `xml:"CreateTopicResult>TopicArn"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
+}
+
+type TopicARN struct {
+	Name string `xml:"TopicArn"`
+}
+
+type ListTopicsResponse struct {
+	XMLName   xml.Name   `xml:"ListTopicsResponse"`
+	TopicARNs []TopicARN `xml:"ListTopicsResult>Topics>member"`
+	RequestID string     `xml:"ResponseMetadata>RequestId"`
+}
+
+type DeleteTopicResponse struct {
+	XMLName   xml.Name `xml:"DeleteTopicResponse"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
+}
+
+type SubscribeResponse struct {
+	XMLName         xml.Name `xml:"SubscribeResponse"`
+	SubscriptionARN string   `xml:"SubscribeResult>SubscriptionArn"`
+	RequestID       string   `xml:"ResponseMetadata>RequestId"`
+}
+
+type SubscriptionARN struct {
+	TopicARN string `xml:"TopicArn"`
+	Protocol string `xml:"Protocol"`
+	ARN      string `xml:"SubscriptionArn"`
+	Owner    string `xml:"Owner"`
+}
+
+type ListSubscriptionsResponse struct {
+	XMLName          xml.Name          `xml:"ListSubscriptionsResponse"`
+	SubscriptionARNs []SubscriptionARN `xml:"ListSubscriptionsResult>Subscriptions>member"`
+	RequestID        string            `xml:"ResponseMetadata>RequestId"`
+}
+
+type UnsubscribeResponse struct {
+	XMLName   xml.Name `xml:"UnsubscribeResponse"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
 }
 
 func writeErrorResponse(c *gin.Context, errorCode cmd.APIErrorCode) {

@@ -18,7 +18,7 @@ func SetDB() {
 }
 
 func Migrate() {
-	db.AutoMigrate(&Resource{})
+	db.AutoMigrate(&Resource{}, &Endpoint{})
 }
 
 func GetDB() *gorm.DB {

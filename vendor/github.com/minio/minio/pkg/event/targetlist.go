@@ -19,8 +19,6 @@ package event
 import (
 	"fmt"
 	"sync"
-
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
 )
 
 // Target - event target interface
@@ -50,15 +48,12 @@ func (list *TargetList) Add(target Target) error {
 }
 
 // Exists - checks whether target by target ID exists or not.
-func (list *TargetList) Exists(tid TargetID) bool {
-	var resource models.Resource
+func (list *TargetList) Exists(id TargetID) bool {
+	list.RLock()
+	defer list.RUnlock()
 
-	db := models.GetDB()
-	if err := db.Where(&models.Resource{AccountID: tid.ID, Name: tid.Name}).First(&resource).Error; err != nil {
-		return false
-	}
-
-	return true
+	_, found := list.targets[id]
+	return found
 }
 
 // TargetIDErr returns error associated for a targetID
