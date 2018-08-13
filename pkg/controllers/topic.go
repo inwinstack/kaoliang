@@ -26,9 +26,10 @@ func CreateTopic(c *gin.Context) {
 		Name:      topicName,
 	}).FirstOrCreate(&topic)
 
+	requestID, _ := uuid.NewV4()
 	body := CreateTopicResponse{
 		TopicARN:  topic.ARN(),
-		RequestID: "",
+		RequestID: requestID.String(),
 	}
 	c.XML(http.StatusOK, body)
 }
@@ -51,9 +52,10 @@ func ListTopics(c *gin.Context) {
 		topicARNs = append(topicARNs, TopicARN{Name: topic.ARN()})
 	}
 
+	requestID, _ := uuid.NewV4()
 	body := ListTopicsResponse{
 		TopicARNs: topicARNs,
-		RequestID: "",
+		RequestID: requestID.String(),
 	}
 
 	c.XML(http.StatusOK, body)
@@ -79,8 +81,9 @@ func DeleteTopic(c *gin.Context) {
 
 	db.Delete(&topic)
 
+	requestID, _ := uuid.NewV4()
 	body := DeleteTopicResponse{
-		RequestID: "",
+		RequestID: requestID.String(),
 	}
 
 	c.XML(http.StatusOK, body)
@@ -109,10 +112,10 @@ func Subscribe(c *gin.Context) {
 		Name:     endpointID.String(),
 	})
 
-	RequestID, _ := uuid.NewV4()
+	requestID, _ := uuid.NewV4()
 	body := SubscribeResponse{
 		SubscriptionARN: topic.ARN() + "/" + endpointID.String(),
-		RequestID:       RequestID.String(),
+		RequestID:       requestID.String(),
 	}
 
 	c.XML(http.StatusOK, body)
