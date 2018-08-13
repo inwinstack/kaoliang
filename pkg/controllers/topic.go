@@ -117,3 +117,37 @@ func Subscribe(c *gin.Context) {
 
 	c.XML(http.StatusOK, body)
 }
+
+func ListSubscriptions(c *gin.Context) {
+	accountID, err := authenticate(c.Request)
+	if err != nil {
+		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	}
+
+	topics := []models.Resource{}
+	db := models.GetDB()
+	db.Where(models.Resource{AccountID: accountID}).Find(&topics)
+
+	subscriptionARNs := []SubscriptionARN{}
+	for _, topic := range topics {
+		endpoints := []models.Endpoint{}
+		db.Model(&topic).Association("Endpoints").Find(&endpoints)
+		if len(endpoints) > 0 {
+			for _, endpoint := range endpoints {
+				subscriptionARNs = append(subscriptionARNs, SubscriptionARN{
+					TopicARN: topic.ARN(),
+					Protocol: endpoint.Protocol,
+					ARN:      topic.ARN() + "/" + endpoint.Name,
+					Owner:    topic.AccountID,
+				})
+			}
+		}
+	}
+
+	requestID, _ := uuid.NewV4()
+	body := ListSubscriptionsResponse{
+		SubscriptionARNs: subscriptionARNs,
+		RequestID:        requestID.String(),
+	}
+	c.XML(http.StatusOK, body)
+}
