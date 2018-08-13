@@ -154,3 +154,31 @@ func ListSubscriptions(c *gin.Context) {
 	}
 	c.XML(http.StatusOK, body)
 }
+
+func Unsubscribe(c *gin.Context) {
+	accountID, err := authenticate(c.Request)
+	if err != nil {
+		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	}
+
+	subscriptionARN := c.PostForm("SubscriptionArn")
+	targetTopic, _ := models.ParseARN(subscriptionARN)
+	targetSubscription, _ := models.ParseSubscription(subscriptionARN)
+
+	topic := models.Resource{}
+	subscription := models.Endpoint{}
+	db := models.GetDB()
+	targetTopic.AccountID = accountID
+	db.Where(targetTopic).First(&topic)
+	targetSubscription.ResourceID = topic.ID
+	db.Where(targetSubscription).First(&subscription)
+
+	db.Delete(&subscription)
+
+	requestID, _ := uuid.NewV4()
+	body := UnsubscribeResponse{
+		RequestID: requestID.String(),
+	}
+
+	c.XML(http.StatusOK, body)
+}
