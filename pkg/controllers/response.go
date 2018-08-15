@@ -44,6 +44,8 @@ type ErrorResponse struct {
 	Code      string   `xml:"Error>Code"`
 	Message   string   `xml:"Error>Message"`
 	RequestID string   `xml:"RequestId"`
+}
+
 type CreateTopicResponse struct {
 	XMLName   xml.Name `xml:"CreateTopicResponse"`
 	TopicARN  string   `xml:"CreateTopicResult>TopicArn"`
