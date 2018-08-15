@@ -46,5 +46,25 @@ func main() {
 		}
 	})
 
+	r.POST("/:account_id/:queue_name", func(c *gin.Context) {
+		action := c.PostForm("Action")
+		switch action {
+		case "DeleteQueue":
+			controllers.DeleteQueue(c)
+		case "ReceiveMessage":
+			controllers.ReceiveMessage(c)
+		}
+	})
+
+	r.POST("/", func(c *gin.Context) {
+		action := c.PostForm("Action")
+		switch action {
+		case "ListQueues":
+			controllers.ListQueues(c)
+		case "CreateQueue":
+			controllers.CreateQueue(c)
+		}
+	})
+
 	r.Run()
 }

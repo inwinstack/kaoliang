@@ -45,7 +45,13 @@ func CreateQueue(c *gin.Context) {
 		return
 	}
 
-	queueName := c.Query("QueueName")
+	var queueName string
+	switch c.Request.Method {
+	case "GET":
+		queueName = c.Query("QueueName")
+	case "POST":
+		queueName = c.PostForm("QueueName")
+	}
 	db := models.GetDB()
 
 	queue := models.Resource{
@@ -120,7 +126,14 @@ func ReceiveMessage(c *gin.Context) {
 		c.XML(http.StatusOK, nil)
 	}
 
-	maxMsgNum, err := strconv.Atoi(c.Query("MaxNumberOfMessages"))
+	var maxNumberOfMessages string
+	switch c.Request.Method {
+	case "GET":
+		maxNumberOfMessages = c.Query("MaxNumberOfMessages")
+	case "POST":
+		maxNumberOfMessages = c.PostForm("MaxNumberOfMessages")
+	}
+	maxMsgNum, err := strconv.Atoi(maxNumberOfMessages)
 	if err != nil || maxMsgNum <= 0 {
 		maxMsgNum = 1
 	}
