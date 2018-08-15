@@ -14,9 +14,10 @@ import (
 )
 
 func ListQueues(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != cmd.ErrNone {
-		writeErrorResponse(c, err)
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	db := models.GetDB()
@@ -38,9 +39,10 @@ func ListQueues(c *gin.Context) {
 }
 
 func CreateQueue(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != cmd.ErrNone {
-		writeErrorResponse(c, err)
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	queueName := c.Query("QueueName")
@@ -76,9 +78,10 @@ func CreateQueue(c *gin.Context) {
 }
 
 func DeleteQueue(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != cmd.ErrNone {
-		writeErrorResponse(c, err)
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	accountID = c.Param("account_id")
@@ -100,9 +103,10 @@ func DeleteQueue(c *gin.Context) {
 }
 
 func ReceiveMessage(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	accountID = c.Param("account_id")
@@ -111,7 +115,7 @@ func ReceiveMessage(c *gin.Context) {
 	db := models.GetDB()
 	queue := models.Resource{}
 
-	err = db.Where(models.Resource{Service: models.SQS, AccountID: accountID, Name: queueName}).First(&queue).Error
+	err := db.Where(models.Resource{Service: models.SQS, AccountID: accountID, Name: queueName}).First(&queue).Error
 	if err != nil {
 		c.XML(http.StatusOK, nil)
 	}

@@ -11,9 +11,10 @@ import (
 )
 
 func CreateTopic(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	topicName := c.PostForm("Name")
@@ -35,9 +36,10 @@ func CreateTopic(c *gin.Context) {
 }
 
 func ListTopics(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	db := models.GetDB()
@@ -62,9 +64,10 @@ func ListTopics(c *gin.Context) {
 }
 
 func DeleteTopic(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	topicARN := c.PostForm("TopicArn")
@@ -90,9 +93,10 @@ func DeleteTopic(c *gin.Context) {
 }
 
 func Subscribe(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	endpointURI := c.PostForm("Endpoint")
@@ -122,9 +126,10 @@ func Subscribe(c *gin.Context) {
 }
 
 func ListSubscriptions(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	topics := []models.Resource{}
@@ -156,9 +161,10 @@ func ListSubscriptions(c *gin.Context) {
 }
 
 func Unsubscribe(c *gin.Context) {
-	accountID, err := authenticate(c.Request)
-	if err != nil {
-		writeErrorResponse(c, cmd.ToAPIErrorCode(err))
+	accountID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	subscriptionARN := c.PostForm("SubscriptionArn")
