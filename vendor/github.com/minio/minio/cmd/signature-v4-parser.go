@@ -87,7 +87,8 @@ func parseCredentialHeader(credElement string, region string) (ch credentialHead
 		return ch, ErrAuthorizationHeaderMalformed
 
 	}
-	if credElements[3] != "s3" {
+	service := credElements[3]
+	if service != "s3" && service != "sns" && service != "sqs" {
 		return ch, ErrInvalidService
 	}
 	cred.scope.service = credElements[3]

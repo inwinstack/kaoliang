@@ -116,7 +116,7 @@ func getScope(t time.Time, region string) string {
 	scope := strings.Join([]string{
 		t.Format(yyyymmdd),
 		region,
-		"s3",
+		utils.GetEnv("SERVICE", "s3"),
 		"aws4_request",
 	}, "/")
 	return scope
@@ -135,7 +135,7 @@ func getStringToSign(canonicalRequest string, t time.Time, scope string) string 
 func getSigningKey(secretKey string, t time.Time, region string) []byte {
 	date := sumHMAC([]byte("AWS4"+secretKey), []byte(t.Format(yyyymmdd)))
 	regionBytes := sumHMAC(date, []byte(region))
-	service := sumHMAC(regionBytes, []byte("s3"))
+	service := sumHMAC(regionBytes, []byte(utils.GetEnv("SERVICE", "s3")))
 	signingKey := sumHMAC(service, []byte("aws4_request"))
 	return signingKey
 }
