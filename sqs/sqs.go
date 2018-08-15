@@ -46,5 +46,5 @@ func main() {
 		}
 	})
 
-	r.Run(":8888")
+	r.Run()
 }
