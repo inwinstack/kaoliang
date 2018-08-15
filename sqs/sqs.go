@@ -9,7 +9,7 @@ import (
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/config"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/controllers"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
-) 
+)
 
 func init() {
 	err := godotenv.Load()
