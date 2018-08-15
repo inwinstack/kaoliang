@@ -56,10 +56,10 @@ func CreateQueue(c *gin.Context) {
 
 	// Response Error when queue is exists
 	if !db.Where(&queue).First(&models.Resource{}).RecordNotFound() {
-		body := ErrorResponse {
-			Type: "Sender",
-			Code: "QueueAlreadyExists",
-			Message: "A queue with this name already exists.",
+		body := ErrorResponse{
+			Type:      "Sender",
+			Code:      "QueueAlreadyExists",
+			Message:   "A queue with this name already exists.",
 			RequestID: requestID.String(),
 		}
 		c.XML(http.StatusBadRequest, body)
@@ -117,7 +117,7 @@ func ReceiveMessage(c *gin.Context) {
 	}
 
 	maxMsgNum, err := strconv.Atoi(c.Query("MaxNumberOfMessages"))
-	if err != nil || maxMsgNum <= 0{
+	if err != nil || maxMsgNum <= 0 {
 		maxMsgNum = 1
 	}
 	if maxMsgNum > 10 {
