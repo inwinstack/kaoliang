@@ -31,7 +31,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -392,10 +391,6 @@ func doesSignatureMatch(hashedPayload string, r *http.Request, region string) (u
 }
 
 func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
-	type User struct {
-		ID string `json:"user_id"`
-	}
-
 	type Key struct {
 		SecretKey string `json:"secret_key"`
 	}
@@ -404,35 +399,23 @@ func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 		Keys []Key `json:"keys"`
 	}
 
-	if _, err := os.Stat("/tmp/" + accessKey); os.IsNotExist(err) {
-		conn, _ := rados.NewConn()
-		conn.ReadDefaultConfigFile()
-		conn.Connect()
-		defer conn.Shutdown()
+	conn, _ := rados.NewConn()
+	conn.ReadDefaultConfigFile()
+	conn.Connect()
+	defer conn.Shutdown()
 
-		ioctx, _ := conn.OpenIOContext(utils.GetEnv("RGW_METADATA_POOL", "default.rgw.meta"))
-		ioctx.SetNamespace("users.keys")
-		stat, _ := ioctx.Stat(accessKey)
-		data := make([]byte, stat.Size)
-		ioctx.Read(accessKey, data, 0)
-
-		keyFile, _ := os.OpenFile("/tmp/"+accessKey, os.O_WRONLY|os.O_CREATE, 0644)
-		defer keyFile.Close()
-		keyFile.Write(data)
-	}
-
-	var user User
-	output, err := sh.Command("bin/ceph-dencoder", "type", "RGWUID", "import", "/tmp/"+accessKey, "decode", "dump_json").Output()
-	if err != nil {
-		panic(err)
-	}
-	_ = json.Unmarshal(output, &user)
+	ioctx, _ := conn.OpenIOContext(utils.GetEnv("RGW_METADATA_POOL", "default.rgw.meta"))
+	ioctx.SetNamespace("users.keys")
+	stat, _ := ioctx.Stat(accessKey)
+	data := make([]byte, stat.Size-4)
+	ioctx.Read(accessKey, data, 4)
+	userID := string(data)
 
 	var userInfo UserInfo
-	output, _ = sh.Command("radosgw-admin", "user", "info", "--uid="+user.ID).Output()
+	output, _ := sh.Command("radosgw-admin", "user", "info", "--uid="+userID).Output()
 	_ = json.Unmarshal(output, &userInfo)
 
-	return user.ID, auth.Credentials{
+	return userID, auth.Credentials{
 		AccessKey: accessKey,
 		SecretKey: userInfo.Keys[0].SecretKey,
 	}, ErrNone
