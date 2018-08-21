@@ -26,6 +26,7 @@ func init() {
 
 func main() {
 	r := gin.Default()
+	r.RedirectTrailingSlash = false
 	r.GET("/:bucket", controllers.GetBucketNotification)
 	r.PUT("/:bucket", controllers.PutBucketNotification)
 

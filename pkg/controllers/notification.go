@@ -43,9 +43,10 @@ func GetBucketNotification(c *gin.Context) {
 		}
 
 		c.XML(http.StatusOK, nConfig)
-	} else {
-		ReverseProxy()(c)
+		return
 	}
+
+	ReverseProxy()(c)
 }
 
 func PutBucketNotification(c *gin.Context) {
@@ -79,9 +80,10 @@ func PutBucketNotification(c *gin.Context) {
 		}
 
 		c.Status(http.StatusOK)
-	} else {
-		ReverseProxy()(c)
+		return
 	}
+
+	ReverseProxy()(c)
 }
 
 func readNotificationConfig(targetList *event.TargetList, bucket string) (*event.Config, error) {
