@@ -4,7 +4,9 @@ import (
 	"crypto/md5"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
@@ -84,14 +86,29 @@ func CreateQueue(c *gin.Context) {
 }
 
 func DeleteQueue(c *gin.Context) {
-	accountID, errCode := authenticate(c.Request)
+	userID, errCode := authenticate(c.Request)
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
 	}
 
-	accountID = c.Param("account_id")
-	queueName := c.Param("queue_name")
+	var accountID string
+	var queueName string
+	switch c.Request.Method {
+	case "GET":
+		accountID = c.Param("account_id")
+		queueName = c.Param("queue_name")
+	case "POST":
+		queueURL, _ := url.Parse(c.PostForm("QueueUrl"))
+		segments := strings.Split(queueURL.Path, "/")
+		accountID = segments[1]
+		queueName = segments[2]
+	}
+
+	if userID != accountID {
+		writeErrorResponse(c, cmd.ErrAccessDenied)
+		return
+	}
 
 	db := models.GetDB()
 	queue := models.Resource{}
@@ -109,14 +126,29 @@ func DeleteQueue(c *gin.Context) {
 }
 
 func ReceiveMessage(c *gin.Context) {
-	accountID, errCode := authenticate(c.Request)
+	userID, errCode := authenticate(c.Request)
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
 	}
 
-	accountID = c.Param("account_id")
-	queueName := c.Param("queue_name")
+	var accountID string
+	var queueName string
+	switch c.Request.Method {
+	case "GET":
+		accountID = c.Param("account_id")
+		queueName = c.Param("queue_name")
+	case "POST":
+		queueURL, _ := url.Parse(c.PostForm("QueueUrl"))
+		segments := strings.Split(queueURL.Path, "/")
+		accountID = segments[1]
+		queueName = segments[2]
+	}
+
+	if userID != accountID {
+		writeErrorResponse(c, cmd.ErrAccessDenied)
+		return
+	}
 
 	db := models.GetDB()
 	queue := models.Resource{}
