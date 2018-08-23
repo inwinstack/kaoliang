@@ -64,7 +64,7 @@ func ListTopics(c *gin.Context) {
 }
 
 func DeleteTopic(c *gin.Context) {
-	accountID, errCode := authenticate(c.Request)
+	userID, errCode := authenticate(c.Request)
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
@@ -76,9 +76,14 @@ func DeleteTopic(c *gin.Context) {
 	db := models.GetDB()
 	topic := models.Resource{}
 
+	if userID != targetTopic.AccountID {
+		writeErrorResponse(c, cmd.ErrAuthorizationError)
+		return
+	}
+
 	db.Where(models.Resource{
 		Service:   models.SNS,
-		AccountID: accountID,
+		AccountID: targetTopic.AccountID,
 		Name:      targetTopic.Name,
 	}).First(&topic)
 
