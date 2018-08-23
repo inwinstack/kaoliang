@@ -193,6 +193,7 @@ const (
 	ErrHealMissingBucket
 	ErrHealAlreadyRunning
 	ErrHealOverlappingPaths
+	ErrAuthorizationError
 )
 
 // error code to APIError structure, these fields carry respective
@@ -842,7 +843,11 @@ var errorCodeResponse = map[APIErrorCode]APIError{
 		Description:    "Object storage backend is unreachable",
 		HTTPStatusCode: http.StatusServiceUnavailable,
 	},
-
+	ErrAuthorizationError: {
+		Code:           "AuthorizationError",
+		Description:    "",
+		HTTPStatusCode: http.StatusForbidden,
+	},
 	// Add your error structure here.
 }
 
