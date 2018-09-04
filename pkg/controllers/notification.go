@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"strings"
@@ -196,6 +198,10 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 	return err
 }
 
+func IsAdminUserPath(path string) bool {
+	return path == "/admin/user/" || path == "/admin/user"
+}
+
 func ReverseProxy() gin.HandlerFunc {
 	target := utils.GetEnv("TARGET_HOST", "127.0.0.1")
 
@@ -209,6 +215,12 @@ func ReverseProxy() gin.HandlerFunc {
 			clientReq := resp.Request
 
 			switch {
+			case IsAdminUserPath(clientReq.URL.Path) && resp.StatusCode == 200:
+				b, _ := ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+				go handleNfsExport(clientReq.Method, b)
+				resp.Body = ioutil.NopCloser(bytes.NewReader(b)) // put body back for client response
+				return nil
 			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0:
 				return sendEvent(resp, event.ObjectCreatedCopy)
 			case len(resp.Header["Etag"]) > 0 && checkResponse(resp, "PUT", 200):
@@ -222,5 +234,29 @@ func ReverseProxy() gin.HandlerFunc {
 
 		proxy := &httputil.ReverseProxy{Director: director, ModifyResponse: modifyResponse}
 		proxy.ServeHTTP(c.Writer, c.Request)
+	}
+}
+
+type RgwUser struct {
+	UserId string   `json:"user_id"`
+	Keys   []RgwKey `json:"keys"`
+}
+
+type RgwKey struct {
+	AccessKey string `json:"access_key"`
+	SecretKey string `json:"secret_key"`
+}
+
+func handleNfsExport(method string, body []byte) {
+	if method == "PUT" {
+		var data RgwUser
+		err := json.Unmarshal(body, &data)
+		if err != nil {
+			return
+		}
+		userId := data.UserId
+		accessKey := data.Keys[0].AccessKey
+		secretKey := data.Keys[0].SecretKey
+		fmt.Println(userId, accessKey, secretKey)
 	}
 }
