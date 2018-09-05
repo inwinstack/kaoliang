@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -23,8 +24,23 @@ func init() {
 	models.SetCache()
 }
 
+func setOriginHeader() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+	}
+}
+
 func main() {
 	r := gin.Default()
+	r.Use(setOriginHeader())
+
+	r.OPTIONS("/", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE")
+		c.Header("Access-Control-Allow-Headers", "x-amz-content-sha256,x-amz-date,authorization,host,x-amz-user-agent")
+
+		c.Status(http.StatusNoContent)
+	})
 
 	r.GET("/:account_id/:queue_name", func(c *gin.Context) {
 		action := c.Query("Action")
