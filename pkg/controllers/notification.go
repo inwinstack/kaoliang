@@ -220,7 +220,7 @@ func ReverseProxy() gin.HandlerFunc {
 			case IsAdminUserPath(clientReq.URL.Path) && resp.StatusCode == 200:
 				b, _ := ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
-				go handleNfsExport(clientReq.Method, b)
+				go handleNfsExport(clientReq, b)
 				resp.Body = ioutil.NopCloser(bytes.NewReader(b)) // put body back for client response
 				return nil
 			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0:
@@ -261,6 +261,10 @@ func addNfsExport(body []byte) {
 	if err != nil {
 		return
 	}
+	// only export when create user (same request only add key on second times)
+	if len(data.Keys) > 1 {
+		return
+	}
 	userId := data.UserId
 	accessKey := data.Keys[0].AccessKey
 	secretKey := data.Keys[0].SecretKey
@@ -269,20 +273,28 @@ func addNfsExport(body []byte) {
 	conn, _ := rados.NewConnWithUser("admin")
 	conn.ReadDefaultConfigFile()
 	conn.Connect()
+	defer conn.Shutdown()
 	ioctx, _ := conn.OpenIOContext("nfs-ganesha")
+	defer ioctx.Destroy()
 
+	// check export is not exists
+	exportObjName := fmt.Sprintf("export_%s", userId)
 	// create export obj
-	exportObjName := createNfsExportObj(ioctx, userId, accessKey, secretKey)
+	createNfsExportObj(ioctx, exportObjName, userId, accessKey, secretKey)
 	// add export obj path to export list
-	exportName := "export"
-	newExport := fmt.Sprintf("%%url \"rados://nfs-ganesha/%s\"\n", exportObjName)
-	stat, _ := ioctx.Stat(exportName)
-	size := stat.Size
-	ioctx.Write(exportName, []byte(newExport), size)
+	addExportPathToList(ioctx, "export", "nfs-ganesha", exportObjName)
 }
 
-func createNfsExportObj(ioctx *rados.IOContext, userId string, accessKey string, secretKey string) string {
-	exportObjName := fmt.Sprintf("export_%s", userId)
+func addExportPathToList(ioctx *rados.IOContext, exportName string, poolName string, exportObjName string) {
+	append_lock := "export_append_lock"
+	append_cookie := "export_append_cookie"
+	newExport := fmt.Sprintf("%%url \"rados://%s/%s\"\n", poolName, exportObjName)
+	ioctx.LockExclusive(exportName, append_lock, append_cookie, "export_append", 0, nil)
+	ioctx.Append(exportName, []byte(newExport))
+	ioctx.Unlock(exportName, append_lock, append_cookie)
+}
+
+func createNfsExportObj(ioctx *rados.IOContext, exportObjName, userId, accessKey, secretKey string) {
 	exportId := random(1, 65535)
 	exportTemp := `Export {
 	Export_ID = %d;
@@ -299,12 +311,21 @@ func createNfsExportObj(ioctx *rados.IOContext, userId string, accessKey string,
         }
 }`
 	export := fmt.Sprintf(exportTemp, exportId, userId, userId, accessKey, secretKey)
-	ioctx.Write(exportObjName, []byte(export), 0)
-	return exportObjName
+	ioctx.WriteFull(exportObjName, []byte(export))
 }
 
-func handleNfsExport(method string, body []byte) {
-	if method == "PUT" {
+func handleNfsExport(req *http.Request, body []byte) {
+	_, isSubuser := req.URL.Query()["subuser"]
+	_, isKey := req.URL.Query()["key"]
+	_, isQuota := req.URL.Query()["quota"]
+	_, isCaps := req.URL.Query()["caps"]
+
+	// only handle user related request
+	if isSubuser || isKey || isQuota || isCaps {
+		return
+	}
+	// handle create user
+	if req.Method == "PUT" {
 		addNfsExport(body)
 	}
 }
