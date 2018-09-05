@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"strings"
 	"time"
 
+	"github.com/ceph/go-ceph/rados"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
 	"github.com/minio/minio/pkg/event"
@@ -247,16 +249,62 @@ type RgwKey struct {
 	SecretKey string `json:"secret_key"`
 }
 
+func random(min int, max int) int {
+	rand.Seed(time.Now().Unix())
+	return rand.Intn(max-min) + min
+}
+
+func addNfsExport(body []byte) {
+	// get user info
+	var data RgwUser
+	err := json.Unmarshal(body, &data)
+	if err != nil {
+		return
+	}
+	userId := data.UserId
+	accessKey := data.Keys[0].AccessKey
+	secretKey := data.Keys[0].SecretKey
+
+	// connect rados
+	conn, _ := rados.NewConnWithUser("admin")
+	conn.ReadDefaultConfigFile()
+	conn.Connect()
+	ioctx, _ := conn.OpenIOContext("nfs-ganesha")
+
+	// create export obj
+	exportObjName := createNfsExportObj(ioctx, userId, accessKey, secretKey)
+	// add export obj path to export list
+	exportName := "export"
+	newExport := fmt.Sprintf("%%url \"rados://nfs-ganesha/%s\"\n", exportObjName)
+	stat, _ := ioctx.Stat(exportName)
+	size := stat.Size
+	ioctx.Write(exportName, []byte(newExport), size)
+}
+
+func createNfsExportObj(ioctx *rados.IOContext, userId string, accessKey string, secretKey string) string {
+	exportObjName := fmt.Sprintf("export_%s", userId)
+	exportId := random(1, 65535)
+	exportTemp := `Export {
+	Export_ID = %d;
+	Path = "/";
+	Pseudo = "/%s";
+	Access_Type = RW;
+	Protocols = 4;
+	Transports = TCP;
+	FSAL {
+		Name = RGW; 
+		User_Id = "%s"; 
+		Access_Key_Id ="%s";
+                Secret_Access_Key = "%s";
+        }
+}`
+	export := fmt.Sprintf(exportTemp, exportId, userId, userId, accessKey, secretKey)
+	ioctx.Write(exportObjName, []byte(export), 0)
+	return exportObjName
+}
+
 func handleNfsExport(method string, body []byte) {
 	if method == "PUT" {
-		var data RgwUser
-		err := json.Unmarshal(body, &data)
-		if err != nil {
-			return
-		}
-		userId := data.UserId
-		accessKey := data.Keys[0].AccessKey
-		secretKey := data.Keys[0].SecretKey
-		fmt.Println(userId, accessKey, secretKey)
+		addNfsExport(body)
 	}
 }
