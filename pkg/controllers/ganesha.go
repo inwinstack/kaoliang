@@ -51,7 +51,7 @@ func addNfsExport(body []byte) {
 		return
 	}
 	nfsCfgPool := utils.GetEnv("NFS_CONFIG_POOL", "nfs-ganesha")
-	nfsCfgName := utils.GetEnv("NFS_CONFIG_NAME", "exports")
+	nfsCfgName := utils.GetEnv("NFS_CONFIG_NAME", "export")
 
 	conn, ioctx := connect()
 	defer ioctx.Destroy()
@@ -65,7 +65,7 @@ func addNfsExport(body []byte) {
 
 func removeNfsExport(userId string) {
 	nfsCfgPool := utils.GetEnv("NFS_CONFIG_POOL", "nfs-ganesha")
-	nfsCfgName := utils.GetEnv("NFS_CONFIG_NAME", "exports")
+	nfsCfgName := utils.GetEnv("NFS_CONFIG_NAME", "export")
 
 	conn, ioctx := connect()
 	defer ioctx.Destroy()
