@@ -265,6 +265,12 @@
 			"revisionTime": "2018-06-18T11:59:01Z"
 		},
 		{
+			"checksumSHA1": "KR3gmU3Z5pdR7Mj+WsicPz4GUWI=",
+			"path": "github.com/godbus/dbus",
+			"revision": "5f1bd775722e6927aef8a0b2940ae5a5ba76255c",
+			"revisionTime": "2018-06-13T20:58:04Z"
+		},
+		{
 			"checksumSHA1": "ehhDW5xOMs7vp2dxSoKBG8tJSB4=",
 			"path": "github.com/gogo/protobuf/gogoproto",
 			"revision": "30cf7ac33676b5786e78c746683f0d4cd64fa75b",
