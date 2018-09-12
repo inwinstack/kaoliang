@@ -67,7 +67,7 @@ func listEnabledExport() []Export {
 	return exported
 }
 
-func loadConfiguredPaths(userId, poolName string) map[string]bool {
+func loadConfiguredPaths(userId, poolName, prefix string) map[string]bool {
 	conn, _ := rados.NewConnWithUser(userId)
 	conn.ReadDefaultConfigFile()
 	conn.Connect()
@@ -77,10 +77,10 @@ func loadConfiguredPaths(userId, poolName string) map[string]bool {
 
 	configured := make(map[string]bool)
 	ioctx.ListObjects(func(oid string) {
-		if oid == "export" {
+		if !strings.HasPrefix(oid, prefix) {
 			return
 		}
-		path := "/" + strings.Replace(oid, "export_", "", -1)
+		path := "/" + strings.TrimPrefix(oid, prefix)
 		configured[path] = true
 	})
 	return configured
@@ -123,7 +123,7 @@ func main() {
 	reloadExport()
 
 	// load configured export path from rados
-	paths := loadConfiguredPaths("admin", "nfs-ganesha")
+	paths := loadConfiguredPaths("admin", "nfs-ganesha", "export_")
 
 	// list enabled export on this host
 	exports := listEnabledExport()
