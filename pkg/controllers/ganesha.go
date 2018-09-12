@@ -95,6 +95,14 @@ func addExportPathToList(ioctx *rados.IOContext, exportName string, poolName str
 	ioctx.Unlock(exportName, lock, cookie)
 }
 
+func loadExportTemplate(ioctx *rados.IOContext, exportTmplName string) string {
+	stat, _ := ioctx.Stat(exportTmplName)
+	size := stat.Size
+	data := make([]byte, size)
+	ioctx.Read(exportTmplName, data, 0)
+	return string(data)
+}
+
 func removeExportPathToList(ioctx *rados.IOContext, exportName string, poolName string, exportObjName string) {
 	lock := "export_remove_lock"
 	cookie := "export_remove_cookie"
@@ -117,23 +125,12 @@ func createNfsExportObj(ioctx *rados.IOContext, data *RgwUser) string {
 	accessKey := data.Keys[0].AccessKey
 	secretKey := data.Keys[0].SecretKey
 
-	exportId := random(1, 65535)
-	exportTemp := `Export {
-	Export_ID = %d;
-	Path = "/";
-	Pseudo = "/%s";
-	Access_Type = RW;
-	Protocols = 4;
-	Transports = TCP;
-	FSAL {
-		Name = RGW; 
-		User_Id = "%s"; 
-		Access_Key_Id ="%s";
-                Secret_Access_Key = "%s";
-        }
-}`
+	exportId := random(1, 65535) // 0 is for root
+
+	exportTmplName := utils.GetEnv("NFS_EXPORT_TMPL", "export.tmpl")
+	exportTmpl := loadExportTemplate(ioctx, exportTmplName)
 	exportObjName := makeExportObjName(userId)
-	export := fmt.Sprintf(exportTemp, exportId, userId, userId, accessKey, secretKey)
+	export := fmt.Sprintf(exportTmpl, exportId, userId, userId, accessKey, secretKey)
 	ioctx.WriteFull(exportObjName, []byte(export))
 	return exportObjName
 }
