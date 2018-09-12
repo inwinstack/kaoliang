@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -104,12 +105,7 @@ func disableExport(export Export) {
 	}
 }
 
-func reloadExport() {
-	// take nfs-ganesha process id
-	pid := findPidByName("ganesha.nfsd")
-	if pid == -1 {
-		return
-	}
+func reloadExport(pid int) {
 	// send signal to process
 	process, _ := os.FindProcess(pid)
 	err := process.Signal(syscall.SIGHUP)
@@ -119,11 +115,33 @@ func reloadExport() {
 }
 
 func main() {
+	euid := os.Geteuid()
+	if euid != 0 {
+		fmt.Println("Permission denied, using root or sudo.")
+		return
+	}
+
+	if len(os.Args) != 4 || os.Args[1] == "help" || os.Args[1] != "start" {
+		fmt.Printf("Usage: %s [start|help] <ceph user> <pool name>\n", os.Args[0])
+		return
+	}
+
+	user := os.Args[2]
+	poolname := os.Args[3]
+
+	// take nfs-ganesha process id
+	processName := "ganesha.nfsd"
+	pid := findPidByName(processName)
+	if pid == -1 {
+		fmt.Printf("Process %s is not found\n", processName)
+		return
+	}
+
 	// send signal to reload exports (add only, no update and delete)
-	reloadExport()
+	reloadExport(pid)
 
 	// load configured export path from rados
-	paths := loadConfiguredPaths("admin", "nfs-ganesha", "export_")
+	paths := loadConfiguredPaths(user, poolname, "export_")
 
 	// list enabled export on this host
 	exports := listEnabledExport()
