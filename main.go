@@ -35,7 +35,7 @@ func init() {
 	models.SetDB()
 	models.Migrate()
 	models.SetCache()
-
+	models.SetCelery()
 }
 
 func main() {
