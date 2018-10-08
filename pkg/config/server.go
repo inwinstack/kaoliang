@@ -43,7 +43,7 @@ type CephBackend struct {
 }
 
 func (b CephBackend) GetUser(r *http.Request) (string, cmd.APIErrorCode) {
-	userId, err := cmd.ReqSignatureV4Verify(r, "us-east-1")
+	userId, err := cmd.ReqSignatureV4Verify(r, "")
 	return userId, err
 }
 
