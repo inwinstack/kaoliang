@@ -224,6 +224,7 @@ func ReverseProxy() gin.HandlerFunc {
 			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0:
 				return sendEvent(resp, event.ObjectCreatedCopy)
 			case len(resp.Header["Etag"]) > 0 && checkResponse(resp, "PUT", 200):
+				go InheritNfsPermission(*clientReq)
 				return sendEvent(resp, event.ObjectCreatedPut)
 			case checkResponse(resp, "DELETE", 204):
 				return sendEvent(resp, event.ObjectRemovedDelete)
