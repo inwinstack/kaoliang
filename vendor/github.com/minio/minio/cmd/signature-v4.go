@@ -390,6 +390,10 @@ func doesSignatureMatch(hashedPayload string, r *http.Request, region string) (u
 	return
 }
 
+func GetCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
+	return getCredentials(accessKey)
+}
+
 func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 	type Key struct {
 		SecretKey string `json:"secret_key"`
