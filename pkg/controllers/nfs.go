@@ -2,14 +2,18 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ceph/go-ceph/rados"
 	"github.com/ceph/go-ceph/rgw"
+	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
 	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
 )
@@ -184,6 +188,14 @@ func extractAccessKey(auth string) string {
 	return accessKey
 }
 
+func extractAccessKeyV2(auth string) string {
+	tokens := strings.Split(auth, " ")
+	if len(tokens) != 2 {
+		return ""
+	}
+	return strings.Split(tokens[1], ":")[0]
+}
+
 func setupPermission(parentHandle rgw.RgwFileHandle, path string) {
 	// take current target name
 	index := strings.Index(path, "/")
@@ -253,4 +265,77 @@ func InheritNfsPermission(request http.Request) {
 	defer bh.Release()
 
 	setupPermission(bh, path[index+1:])
+}
+
+func getValue(q url.Values, key string) (uint, error) {
+	if len(q[key]) == 0 {
+		return 0, errors.New("No specific parameter")
+	}
+	s := q[key][0]
+	i, err := strconv.ParseUint(s, 8, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint(i), nil
+}
+
+func PatchBucketPermission(c *gin.Context) {
+	fmt.Println("PatchBucketPermission")
+
+	var accessKey string
+	// get uid, access key and secret key
+	auth := c.Request.Header.Get("Authorization")
+	fmt.Println(auth)
+
+	authType := cmd.GetRequestAuthType(c.Request)
+	if authType == 7 { // authTypeSignedV2
+		accessKey = extractAccessKeyV2(auth)
+	} else {
+		accessKey = ""
+	}
+	if accessKey == "" {
+		return
+	}
+
+	fmt.Println(accessKey)
+
+	name, cred, s3Err := cmd.GetCredentials(accessKey)
+	if s3Err != cmd.ErrNone {
+		return
+	}
+
+	fmt.Println(name)
+
+	args := []string{"kaoliang", "--conf=/etc/ceph/ceph.conf", "--name=client.admin", "--cluster=ceph"}
+	radosgw := rgw.Create(args)
+	rgwfs, _ := rgw.Mount(radosgw, name, cred.AccessKey, cred.SecretKey)
+	defer rgw.Umount(rgwfs)
+	rootHandle := rgw.MakeRgwFileHandle(rgwfs)
+	defer rootHandle.Release()
+
+	bucket := c.Param("bucket")
+	bh := rootHandle.Lookup(bucket)
+	defer bh.Release()
+
+	attrMap := make(map[string]uint)
+
+	q := c.Request.URL.Query()
+	uid, err := getValue(q, "uid")
+	if err == nil {
+		attrMap["uid"] = uid
+	}
+	gid, err := getValue(q, "gid")
+	if err == nil {
+		attrMap["gid"] = gid
+	}
+	mode, err := getValue(q, "mode")
+	if err == nil {
+		attrMap["mode"] = mode
+	}
+	fmt.Printf("%o %o %o", attrMap["uid"], attrMap["gid"], attrMap["mode"])
+	//bh.SetAttr(attrMap)
+	attr := bh.GetAttr()
+	fmt.Println(attr.Uid)
+	fmt.Println(attr.Gid)
+	fmt.Println(attr.Mode)
 }
