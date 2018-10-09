@@ -23,6 +23,11 @@ type Event struct {
 	TopicID uint `xml:"-"`
 }
 
+// MarshalXML - encodes to XML data.
+func (event *Event) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return e.EncodeElement(event.Name.String(), start)
+}
+
 func (e *Event) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var s string
 	if err := d.DecodeElement(&s, &start); err != nil {
