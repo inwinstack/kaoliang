@@ -21,9 +21,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/config"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/controllers"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
+	"github.com/inwinstack/kaoliang/pkg/config"
+	"github.com/inwinstack/kaoliang/pkg/controllers"
+	"github.com/inwinstack/kaoliang/pkg/models"
 )
 
 func init() {

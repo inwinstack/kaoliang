@@ -21,7 +21,7 @@ import (
 	"github.com/minio/minio/cmd"
 	"github.com/satori/go.uuid"
 
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
+	"github.com/inwinstack/kaoliang/pkg/models"
 )
 
 func CreateTopic(c *gin.Context) {
