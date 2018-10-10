@@ -3,8 +3,8 @@ package models_test
 import (
 	"testing"
 
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/config"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
+	"github.com/inwinstack/kaoliang/pkg/config"
+	"github.com/inwinstack/kaoliang/pkg/models"
 
 	. "github.com/smartystreets/goconvey/convey"
 )

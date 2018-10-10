@@ -23,7 +23,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/config"
+	"github.com/inwinstack/kaoliang/pkg/config"
 )
 
 type Service int

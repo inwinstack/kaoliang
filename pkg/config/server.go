@@ -19,7 +19,7 @@ import (
 
 	"github.com/minio/minio/cmd"
 
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 var serverConfig *ServerConfig

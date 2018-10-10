@@ -18,7 +18,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 var db *gorm.DB

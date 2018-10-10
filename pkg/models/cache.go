@@ -17,7 +17,7 @@ package models
 import (
 	"github.com/go-redis/redis"
 
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 var client *redis.Client

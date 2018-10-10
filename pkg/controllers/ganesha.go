@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/ceph/go-ceph/rados"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 type RgwUser struct {

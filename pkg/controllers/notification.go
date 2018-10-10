@@ -29,9 +29,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
 	"github.com/minio/minio/pkg/event"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/config"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/models"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
+	"github.com/inwinstack/kaoliang/pkg/config"
+	"github.com/inwinstack/kaoliang/pkg/models"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 var targetList *event.TargetList
