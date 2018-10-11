@@ -59,9 +59,9 @@ func MakeRgwFileHandle(rgwfs *C.struct_rgw_fs) RgwFileHandle {
 	return RgwFileHandle{rgwfs: rgwfs, instance: nil}
 }
 
-func (fh RgwFileHandle) Lookup(path string) RgwFileHandle {
-	handle, _ := Lookup(fh.rgwfs, fh.instance, path)
-	return RgwFileHandle{rgwfs: fh.rgwfs, instance: handle}
+func (fh RgwFileHandle) Lookup(path string) (RgwFileHandle, error) {
+	handle, err := Lookup(fh.rgwfs, fh.instance, path)
+	return RgwFileHandle{rgwfs: fh.rgwfs, instance: handle}, err
 }
 
 func (fh RgwFileHandle) Release() {
