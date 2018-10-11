@@ -390,6 +390,10 @@ func doesSignatureMatch(hashedPayload string, r *http.Request, region string) (u
 	return
 }
 
+func GetCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
+	return getCredentials(accessKey)
+}
+
 func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 	type Key struct {
 		SecretKey string `json:"secret_key"`
@@ -406,7 +410,10 @@ func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 
 	ioctx, _ := conn.OpenIOContext(utils.GetEnv("RGW_METADATA_POOL", "default.rgw.meta"))
 	ioctx.SetNamespace("users.keys")
-	stat, _ := ioctx.Stat(accessKey)
+	stat, err := ioctx.Stat(accessKey)
+	if err != nil {
+		return "", auth.Credentials{}, ErrInvalidAccessKeyID
+	}
 	data := make([]byte, stat.Size-4)
 	ioctx.Read(accessKey, data, 4)
 	userID := string(data)

@@ -43,6 +43,8 @@ func main() {
 	r.RedirectTrailingSlash = false
 	r.GET("/:bucket", controllers.GetBucketNotification)
 	r.PUT("/:bucket", controllers.PutBucketNotification)
+	r.PATCH("/:bucket", controllers.PatchBucketPermission)
+	r.PATCH("/:bucket/", controllers.PatchBucketPermission)
 
 	r.NoRoute(controllers.ReverseProxy())
 

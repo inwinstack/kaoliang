@@ -88,6 +88,10 @@ const (
 	authTypeJWT
 )
 
+func GetRequestAuthType(r *http.Request) authType {
+	return getRequestAuthType(r)
+}
+
 // Get request authentication type.
 func getRequestAuthType(r *http.Request) authType {
 	if isRequestSignatureV2(r) {
