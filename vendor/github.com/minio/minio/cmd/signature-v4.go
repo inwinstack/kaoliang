@@ -41,7 +41,7 @@ import (
 	"github.com/minio/minio-go/pkg/s3utils"
 	"github.com/minio/minio/pkg/auth"
 	sha256 "github.com/minio/sha256-simd"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 // AWS Signature Version '4' constants.
