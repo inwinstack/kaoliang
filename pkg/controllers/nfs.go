@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -205,7 +204,7 @@ func setupPermission(parentHandle rgw.RgwFileHandle, path string) {
 	target := path[0:index]
 
 	// load target handle
-	handle := parentHandle.Lookup(target)
+	handle, _ := parentHandle.Lookup(target)
 	parentAttr := parentHandle.GetAttr()
 	attr := handle.GetAttr()
 
@@ -261,18 +260,15 @@ func InheritNfsPermission(request http.Request) {
 	bucket := path[0:index]
 	rootHandle := rgw.MakeRgwFileHandle(rgwfs)
 	defer rootHandle.Release()
-	bh := rootHandle.Lookup(bucket)
+	bh, _ := rootHandle.Lookup(bucket)
 	defer bh.Release()
 
 	setupPermission(bh, path[index+1:])
 }
 
-func getValue(q url.Values, key string) (uint, error) {
-	if len(q[key]) == 0 {
-		return 0, errors.New("No specific parameter")
-	}
+func getValue(q url.Values, key string, base int) (uint, error) {
 	s := q[key][0]
-	i, err := strconv.ParseUint(s, 8, 32)
+	i, err := strconv.ParseUint(s, base, 32)
 	if err != nil {
 		return 0, err
 	}
@@ -280,62 +276,71 @@ func getValue(q url.Values, key string) (uint, error) {
 }
 
 func PatchBucketPermission(c *gin.Context) {
-	fmt.Println("PatchBucketPermission")
-
+	// extract access key
 	var accessKey string
-	// get uid, access key and secret key
 	auth := c.Request.Header.Get("Authorization")
-	fmt.Println(auth)
-
 	authType := cmd.GetRequestAuthType(c.Request)
 	if authType == 7 { // authTypeSignedV2
 		accessKey = extractAccessKeyV2(auth)
+	} else if authType == 6 { // authTypeSigned
+		accessKey = extractAccessKey(auth)
 	} else {
-		accessKey = ""
-	}
-	if accessKey == "" {
+		writeErrorResponse(c, cmd.ErrAuthorizationError)
 		return
 	}
-
-	fmt.Println(accessKey)
-
+	// get s3 user id and secret key
 	name, cred, s3Err := cmd.GetCredentials(accessKey)
 	if s3Err != cmd.ErrNone {
+		writeErrorResponse(c, s3Err)
 		return
 	}
-
-	fmt.Println(name)
-
+	// connect ceph
 	args := []string{"kaoliang", "--conf=/etc/ceph/ceph.conf", "--name=client.admin", "--cluster=ceph"}
 	radosgw := rgw.Create(args)
-	rgwfs, _ := rgw.Mount(radosgw, name, cred.AccessKey, cred.SecretKey)
+	rgwfs, cephErr := rgw.Mount(radosgw, name, cred.AccessKey, cred.SecretKey)
 	defer rgw.Umount(rgwfs)
+
 	rootHandle := rgw.MakeRgwFileHandle(rgwfs)
 	defer rootHandle.Release()
 
+	// load bucket file handle
 	bucket := c.Param("bucket")
-	bh := rootHandle.Lookup(bucket)
+	bh, cephErr := rootHandle.Lookup(bucket)
+	if cephErr != nil && cephErr == rgw.CephError(-2) {
+		writeErrorResponse(c, cmd.ErrNoSuchBucket)
+		return
+	}
 	defer bh.Release()
 
 	attrMap := make(map[string]uint)
-
 	q := c.Request.URL.Query()
-	uid, err := getValue(q, "uid")
-	if err == nil {
+	// extract uid (nfs)
+	if len(q["uid"]) != 0 {
+		uid, err := getValue(q, "uid", 10)
+		if err != nil {
+			writeErrorResponse(c, cmd.ErrInvalidRequest)
+			return
+		}
 		attrMap["uid"] = uid
 	}
-	gid, err := getValue(q, "gid")
-	if err == nil {
+	// extract gid
+	if len(q["gid"]) != 0 {
+		gid, err := getValue(q, "gid", 10)
+		if err != nil {
+			writeErrorResponse(c, cmd.ErrInvalidRequest)
+			return
+		}
 		attrMap["gid"] = gid
 	}
-	mode, err := getValue(q, "mode")
-	if err == nil {
+	// extract mode
+	if len(q["mode"]) != 0 {
+		mode, err := getValue(q, "mode", 8)
+		if err != nil || mode < 0 || mode > 0777 {
+			writeErrorResponse(c, cmd.ErrInvalidRequest)
+			return
+		}
 		attrMap["mode"] = mode
 	}
-	fmt.Printf("%o %o %o", attrMap["uid"], attrMap["gid"], attrMap["mode"])
-	//bh.SetAttr(attrMap)
-	attr := bh.GetAttr()
-	fmt.Println(attr.Uid)
-	fmt.Println(attr.Gid)
-	fmt.Println(attr.Mode)
+	// set new attribure
+	bh.SetAttr(attrMap)
 }
