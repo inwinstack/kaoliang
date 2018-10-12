@@ -144,7 +144,7 @@ func (q Queue) ToRulesMap() RulesMap {
 
 type Queue struct {
 	Model
-	QueueIdentifier string   `xml:"Id" gorm:"unique;not null"`
+	QueueIdentifier string   `xml:"Id"`
 	Filter          S3Key    `xml:"Filter"`
 	Events          []Event  `xml:"Event"`
 	ARN             string   `xml:"Queue"`
@@ -169,7 +169,7 @@ func (q *Queue) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 
 type Topic struct {
 	Model
-	TopicIdentifier string   `xml:"Id" gorm:"unique;not null"`
+	TopicIdentifier string   `xml:"Id"`
 	Filter          S3Key    `xml:"Filter"`
 	Events          []Event  `xml:"Event"`
 	ARN             string   `xml:"Topic"`
