@@ -243,7 +243,7 @@ func ReverseProxy() gin.HandlerFunc {
 				return sendEvent(resp, event.ObjectCreatedCopy)
 			case checkResponse(resp, "POST", 200) && len(clientReq.URL.Query()["uploadId"]) != 0:
 				go InheritNfsPermission(*clientReq)
-				return sendEvent(resp, event.ObjectCreatedPut)
+				return sendEvent(resp, event.ObjectCreatedCompleteMultipartUpload)
 			case len(resp.Header["Etag"]) > 0 && checkResponse(resp, "PUT", 200) && !isMultipartUpload(clientReq):
 				go InheritNfsPermission(*clientReq)
 				return sendEvent(resp, event.ObjectCreatedPut)
