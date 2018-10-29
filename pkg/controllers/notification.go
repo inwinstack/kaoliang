@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio/cmd"
-	"github.com/minio/minio/pkg/event"
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/models"
 	"github.com/inwinstack/kaoliang/pkg/utils"
+	"github.com/minio/minio/cmd"
+	"github.com/minio/minio/pkg/event"
 )
 
 var targetList *event.TargetList
@@ -205,11 +205,15 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 		if err != nil {
 			panic(err)
 		}
-
 		client.RPush(fmt.Sprintf("%s:%s:%s", targetID.Service, targetID.ID, targetID.Name), value)
 	}
 
 	return err
+}
+
+func isMultipartUpload(request *http.Request) bool {
+	q := request.URL.Query()
+	return len(q["partNumber"]) != 0 && len(q["uploadId"]) != 0
 }
 
 func IsAdminUserPath(path string) bool {
@@ -237,7 +241,10 @@ func ReverseProxy() gin.HandlerFunc {
 				return nil
 			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0:
 				return sendEvent(resp, event.ObjectCreatedCopy)
-			case len(resp.Header["Etag"]) > 0 && checkResponse(resp, "PUT", 200):
+			case checkResponse(resp, "POST", 200) && len(clientReq.URL.Query()["uploadId"]) != 0:
+				go InheritNfsPermission(*clientReq)
+				return sendEvent(resp, event.ObjectCreatedCompleteMultipartUpload)
+			case len(resp.Header["Etag"]) > 0 && checkResponse(resp, "PUT", 200) && !isMultipartUpload(clientReq):
 				go InheritNfsPermission(*clientReq)
 				return sendEvent(resp, event.ObjectCreatedPut)
 			case checkResponse(resp, "DELETE", 204):
