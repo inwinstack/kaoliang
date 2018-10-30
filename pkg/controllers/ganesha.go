@@ -27,13 +27,14 @@ import (
 	"github.com/ceph/go-ceph/rados"
 	"github.com/ceph/go-ceph/rgw"
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio/cmd"
 	"github.com/inwinstack/kaoliang/pkg/utils"
+	"github.com/minio/minio/cmd"
 )
 
 type RgwUser struct {
-	UserId string   `json:"user_id"`
-	Keys   []RgwKey `json:"keys"`
+	UserId      string   `json:"user_id"`
+	DisplayName string   `json:"display_name"`
+	Keys        []RgwKey `json:"keys"`
 }
 
 type RgwKey struct {
@@ -143,14 +144,18 @@ func createNfsExportObj(ioctx *rados.IOContext, data *RgwUser) string {
 	userId := data.UserId
 	accessKey := data.Keys[0].AccessKey
 	secretKey := data.Keys[0].SecretKey
+	displayName := data.DisplayName
 
 	exportId := random(1, 65535) // 0 is for root
 
 	exportTmplName := utils.GetEnv("NFS_EXPORT_TMPL", "export.tmpl")
 	exportTmpl := loadExportTemplate(ioctx, exportTmplName)
 	exportObjName := makeExportObjName(userId)
-	export := fmt.Sprintf(exportTmpl, exportId, userId, userId, accessKey, secretKey)
+	export := fmt.Sprintf(exportTmpl, exportId, displayName, userId, accessKey, secretKey)
 	ioctx.WriteFull(exportObjName, []byte(export))
+
+	// put pseudo (export path) to xattr
+	ioctx.SetXattr(exportObjName, "pseudo", []byte(displayName))
 	return exportObjName
 }
 
