@@ -32,7 +32,7 @@ func SetDB() {
 }
 
 func Migrate() {
-	db.AutoMigrate(&Resource{}, &Endpoint{})
+	db.AutoMigrate(&Resource{}, &Endpoint{}, &Event{}, &S3Key{}, &FilterRuleList{}, &FilterRule{}, &Queue{}, &Topic{}, &Config{})
 }
 
 func GetDB() *gorm.DB {

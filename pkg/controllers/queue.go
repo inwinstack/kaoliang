@@ -38,7 +38,10 @@ func ListQueues(c *gin.Context) {
 
 	db := models.GetDB()
 	var queues []models.Resource
-	db.Where(&models.Resource{AccountID: accountID}).Find(&queues)
+	db.Where(&models.Resource{
+		Service:   models.SQS,
+		AccountID: accountID,
+	}).Find(&queues)
 
 	queueUrls := []string{}
 	for _, queue := range queues {

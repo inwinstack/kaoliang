@@ -265,6 +265,12 @@
 			"revisionTime": "2018-06-18T11:59:01Z"
 		},
 		{
+			"checksumSHA1": "vuMceOkJ1MWJV3bTyGx1TcUt+l4=",
+			"path": "github.com/gocelery/gocelery",
+			"revision": "b2f0dd7ec05bbc742030962676dcd27d62cea6d1",
+			"revisionTime": "2018-08-07T06:15:31Z"
+		},
+		{
 			"checksumSHA1": "KR3gmU3Z5pdR7Mj+WsicPz4GUWI=",
 			"path": "github.com/godbus/dbus",
 			"revision": "5f1bd775722e6927aef8a0b2940ae5a5ba76255c",
@@ -299,6 +305,18 @@
 			"path": "github.com/golang/snappy",
 			"revision": "2e65f85255dbc3072edf28d6b5b8efc472979f5a",
 			"revisionTime": "2018-05-18T05:39:59Z"
+		},
+		{
+			"checksumSHA1": "w3QCCIYHgZzIXQ+xTl7oLfFrXHs=",
+			"path": "github.com/gomodule/redigo/internal",
+			"revision": "2cd21d9966bf7ff9ae091419744f0b3fb0fecace",
+			"revisionTime": "2018-06-27T14:45:07Z"
+		},
+		{
+			"checksumSHA1": "To/N5YA/FD0Rrs6r2OOmHXgxYwI=",
+			"path": "github.com/gomodule/redigo/redis",
+			"revision": "2cd21d9966bf7ff9ae091419744f0b3fb0fecace",
+			"revisionTime": "2018-06-27T14:45:07Z"
 		},
 		{
 			"checksumSHA1": "g/V4qrXjUGG9B+e3hB+4NAYJ5Gs=",

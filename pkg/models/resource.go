@@ -21,8 +21,6 @@ import (
 
 	"github.com/minio/minio/pkg/event"
 
-	"github.com/jinzhu/gorm"
-
 	"github.com/inwinstack/kaoliang/pkg/config"
 )
 
@@ -56,12 +54,14 @@ func (s Service) Value() (driver.Value, error) {
 }
 
 type Resource struct {
-	gorm.Model
-	Service
+	Model
+	Service   Service
 	AccountID string
 	Type      string
 	Name      string
 	Endpoints []Endpoint
+	Queues    []Queue
+	Topics    []Topic
 }
 
 func (r Resource) URL() string {

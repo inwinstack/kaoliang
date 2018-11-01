@@ -37,6 +37,20 @@ import (
 var targetList *event.TargetList
 var errNoSuchNotifications = errors.New("The specified bucket does not have bucket notifications")
 
+func PreflightRequest(c *gin.Context) {
+	_, notification := c.GetQuery("notification")
+
+	if notification {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE")
+		c.Header("Access-Control-Allow-Headers", "content-type,x-amz-content-sha256,x-amz-date,authorization,host,x-amz-user-agent")
+
+		c.Status(http.StatusNoContent)
+	} else {
+		ReverseProxy()(c)
+	}
+}
+
 func GetBucketNotification(c *gin.Context) {
 	_, err := authenticate(c.Request)
 	if err != cmd.ErrNone {
@@ -48,6 +62,7 @@ func GetBucketNotification(c *gin.Context) {
 	_, notification := c.GetQuery("notification")
 
 	if notification {
+		c.Header("Access-Control-Allow-Origin", "*")
 		nConfig, err := readNotificationConfig(targetList, bucket)
 		if err != nil {
 			if err != errNoSuchNotifications {
@@ -77,6 +92,7 @@ func PutBucketNotification(c *gin.Context) {
 	_, notification := c.GetQuery("notification")
 
 	if notification {
+		c.Header("Access-Control-Allow-Origin", "*")
 		region := serverConfig.Region
 
 		config, err := event.ParseConfig(c.Request.Body, region, targetList)
