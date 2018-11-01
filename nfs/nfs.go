@@ -95,7 +95,12 @@ func loadConfiguredPaths(userId, poolName, prefix string) map[string]bool {
 		if !strings.HasPrefix(oid, prefix) {
 			return
 		}
-		path := "/" + strings.TrimPrefix(oid, prefix)
+		displayName := make([]byte, 100)
+		len, err := ioctx.GetXattr(oid, "pseudo", displayName)
+		if err != nil {
+			return
+		}
+		path := "/" + string(displayName[0:len])
 		configured[path] = true
 	})
 	return configured
