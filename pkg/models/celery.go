@@ -11,8 +11,8 @@ var (
 )
 
 func SetCelery() {
-	celeryBroker = gocelery.NewRedisCeleryBroker("redis://" + utils.GetEnv("REDIS_ADDR", "localhost:6789"))
-	celeryBackend = gocelery.NewRedisCeleryBackend("redis://" + utils.GetEnv("REDIS_ADDR", "localhost:6789"))
+	celeryBroker = gocelery.NewRedisCeleryBroker(utils.GetEnv("CELERY_BROKER_ADDR", "redis://localhost:6789"))
+	celeryBackend = gocelery.NewRedisCeleryBackend(utils.GetEnv("CELERY_BACKEND_ADDR", "redis://localhost:6789"))
 }
 
 func GetCelery() (*gocelery.RedisCeleryBroker, *gocelery.RedisCeleryBackend) {
