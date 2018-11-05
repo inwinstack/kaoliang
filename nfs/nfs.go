@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -111,6 +112,29 @@ func isExists(target string, paths map[string]bool) bool {
 	return found
 }
 
+func getExport(userId, poolName, target string) []byte {
+	conn, _ := rados.NewConnWithUser(userId)
+	conn.ReadDefaultConfigFile()
+	conn.Connect()
+	defer conn.Shutdown()
+	ioctx, _ := conn.OpenIOContext(poolName)
+	defer ioctx.Destroy()
+
+	var offset uint64 = 0
+	buffer := make([]byte, 50)
+	data := make([]byte, 0)
+	for {
+		ret, _ := ioctx.Read(target, buffer, offset)
+		data = append(data, buffer[0:ret]...)
+		if ret == len(buffer) {
+			offset = offset + uint64(len(buffer))
+		} else {
+			break
+		}
+	}
+	return data
+}
+
 func disableExport(export Export) {
 	conn, err := dbus.SystemBus()
 	if err != nil {
@@ -140,13 +164,14 @@ func main() {
 		return
 	}
 
-	if len(os.Args) != 4 || os.Args[1] == "help" || os.Args[1] != "start" {
-		fmt.Printf("Usage: %s [start|help] <ceph user> <pool name>\n", os.Args[0])
+	if len(os.Args) != 5 || os.Args[1] == "help" || os.Args[1] != "start" {
+		fmt.Printf("Usage: %s [start|help] <ceph user> <pool name> <export path>\n", os.Args[0])
 		return
 	}
 
 	user := os.Args[2]
 	poolname := os.Args[3]
+	exportPath := os.Args[4]
 
 	// take nfs-ganesha process id
 	processName := "ganesha.nfsd"
@@ -155,6 +180,9 @@ func main() {
 		fmt.Printf("Process %s is not found\n", processName)
 		return
 	}
+
+	data := getExport(user, poolname, "export")
+	ioutil.WriteFile(exportPath, data, 0644)
 
 	// send signal to reload exports (add only, no update and delete)
 	reloadExport(pid)

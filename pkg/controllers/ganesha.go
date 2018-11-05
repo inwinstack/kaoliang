@@ -135,8 +135,11 @@ func removeExportPathToList(ioctx *rados.IOContext, exportName string, poolName 
 	data := make([]byte, size)
 	ioctx.Read(exportName, data, 0)
 	// remove target export and write back
-	removedData := strings.Replace(string(data), targetExport, "", 1)
-	ioctx.WriteFull(exportName, []byte(removedData))
+	s := strings.Replace(string(data), targetExport, "", 1)
+	if len(s) == 0 {
+		s = "\n"
+	}
+	ioctx.WriteFull(exportName, []byte(s))
 	ioctx.Unlock(exportName, lock, cookie)
 }
 
