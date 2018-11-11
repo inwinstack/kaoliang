@@ -314,3 +314,13 @@ func getBucketUsers(bucketName string) (users []string, ok bool) {
 
 	return users, true
 }
+
+func contains(users []string, user string) bool {
+	for _, u := range users {
+		if u == user {
+			return true
+		}
+	}
+
+	return false
+}
