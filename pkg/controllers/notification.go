@@ -30,6 +30,7 @@ import (
 	sh "github.com/codeskyblue/go-sh"
 	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
+	"github.com/gocelery/gocelery"
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/models"
 	"github.com/inwinstack/kaoliang/pkg/utils"
@@ -253,10 +254,12 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 
 	client := models.GetCache()
 	serverConfig := config.GetServerConfig()
-	nConfig, err := readNotificationConfig(targetList, bucketName)
-	if err != nil {
-		panic(err)
-	}
+	nConfig := models.Config{}
+	db := models.GetDB()
+	db.Where(&models.Config{Bucket: bucketName}).
+		Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+		Preload("Topics.Events").Preload("Topics.Resource.Endpoints").Preload("Topics.Filter.RuleList.Rules").
+		First(&nConfig)
 
 	rulesMap := nConfig.ToRulesMap()
 	eventTime := time.Now().UTC()
@@ -266,7 +269,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 		etag = val[0]
 	}
 
-	for targetID := range rulesMap[eventType].Match(objectName) {
+	for _, resource := range rulesMap[eventType].Match(objectName) {
 		newEvent := event.Event{
 			EventVersion: "2.0",
 			EventSource:  "aws:s3",
@@ -305,10 +308,19 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 		if err != nil {
 			panic(err)
 		}
-		client.RPush(fmt.Sprintf("%s:%s:%s", targetID.Service, targetID.ID, targetID.Name), value)
+
+		switch resource.Service {
+		case models.SQS:
+			client.RPush(fmt.Sprintf("%s:%s:%s", resource.Service.String(), resource.AccountID, resource.Name), value)
+		case models.SNS:
+			celeryBroker, celeryBackend := models.GetCelery()
+			celeryClient, _ := gocelery.NewCeleryClient(celeryBroker, celeryBackend, 0)
+
+			for _, endpoint := range resource.Endpoints {
+				celeryClient.Delay("worker.send_event", endpoint.URI, string(value))
 	}
 
-	return err
+	return nil
 }
 
 func isMultipartUpload(request *http.Request) bool {
