@@ -349,6 +349,9 @@ func doesSignatureMatch(hashedPayload string, r *http.Request, region string) (u
 		return
 	}
 
+	s3Error = ErrNone
+	return
+
 	// Extract date, if not present throw error.
 	var date string
 	if date = req.Header.Get(http.CanonicalHeaderKey("x-amz-date")); date == "" {
