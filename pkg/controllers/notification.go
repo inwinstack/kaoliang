@@ -37,7 +37,6 @@ import (
 	"github.com/minio/minio/pkg/event"
 )
 
-var targetList *event.TargetList
 var errNoSuchNotifications = errors.New("The specified bucket does not have bucket notifications")
 
 func PreflightRequest(c *gin.Context) {
