@@ -38,10 +38,10 @@ import (
 
 	"github.com/ceph/go-ceph/rados"
 	sh "github.com/codeskyblue/go-sh"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 	"github.com/minio/minio-go/pkg/s3utils"
 	"github.com/minio/minio/pkg/auth"
 	sha256 "github.com/minio/sha256-simd"
-	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 // AWS Signature Version '4' constants.
