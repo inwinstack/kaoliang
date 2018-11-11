@@ -40,7 +40,7 @@ type DeleteQueueResponse struct {
 
 type ReceiveMessageResponse struct {
 	XMLName   xml.Name  `xml:"ReceiveMessageResponse"`
-	Messages  []Message `xml:"ReceiveMessageResult"`
+	Messages  []Message `xml:"ReceiveMessageResult>Message"`
 	RequestID string    `xml:"ResponseMetadata>RequestId"`
 }
 
