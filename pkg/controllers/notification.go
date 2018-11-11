@@ -88,34 +88,130 @@ func GetBucketNotification(c *gin.Context) {
 }
 
 func PutBucketNotification(c *gin.Context) {
-	_, err := authenticate(c.Request)
-	if err != cmd.ErrNone {
-		writeErrorResponse(c, err)
+	userID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	bucket := c.Param("bucket")
-	serverConfig := config.GetServerConfig()
+	users, ok := getBucketUsers(bucket)
+	if !ok {
+		writeErrorResponse(c, cmd.ErrNoSuchBucket)
+		return
+	}
 
-	_, notification := c.GetQuery("notification")
+	if !contains(users, userID) {
+		writeErrorResponse(c, cmd.ErrAccessDenied)
+		return
+	}
 
-	if notification {
+	if _, ok := c.GetQuery("notification"); ok {
 		c.Header("Access-Control-Allow-Origin", "*")
-		region := serverConfig.Region
+		xmlConfig := models.Config{}
+		data, _ := ioutil.ReadAll(c.Request.Body)
+		xml.Unmarshal(data, &xmlConfig)
+		xmlConfig.Bucket = bucket
+		db := models.GetDB()
 
-		config, err := event.ParseConfig(c.Request.Body, region, targetList)
-		if err != nil {
-			apiErr := cmd.ErrMalformedXML
-			if event.IsEventError(err) {
-				apiErr = cmd.ToAPIErrorCode(err)
+		if err := db.Create(&xmlConfig).Error; err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				if mysqlErr.Number == 1062 {
+					config := models.Config{}
+					db.Where(&models.Config{Bucket: bucket}).
+						Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+						Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
+						First(&config)
+					for _, xmlQueue := range xmlConfig.Queues {
+						targetResource, err := models.ParseARN(xmlQueue.ARN)
+						if err != nil {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+						if db.Where(models.Resource{
+							AccountID: targetResource.AccountID,
+							Service:   targetResource.Service,
+							Name:      targetResource.Name,
+						}).First(&targetResource).RecordNotFound() {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+
+						queue := models.Queue{}
+						if db.Where(models.Queue{
+							QueueIdentifier: xmlQueue.QueueIdentifier,
+							ConfigID:        config.ID,
+						}).First(&queue).RecordNotFound() {
+							xmlQueue.ResourceID = targetResource.ID
+							xmlQueue.ConfigID = config.ID
+							db.Create(&xmlQueue)
+						} else {
+							queue.ARN = targetResource.ARN()
+							queue.ResourceID = targetResource.ID
+							db.Save(&queue)
+						}
+					}
+
+					for _, xmlTopic := range xmlConfig.Topics {
+						targetResource, err := models.ParseARN(xmlTopic.ARN)
+						if err != nil {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+						if db.Where(models.Resource{
+							AccountID: targetResource.AccountID,
+							Service:   targetResource.Service,
+							Name:      targetResource.Name,
+						}).First(&targetResource).RecordNotFound() {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+
+						topic := models.Topic{}
+						if db.Where(models.Topic{
+							TopicIdentifier: xmlTopic.TopicIdentifier,
+							ConfigID:        config.ID,
+						}).First(&topic).RecordNotFound() {
+							xmlTopic.ResourceID = targetResource.ID
+							xmlTopic.ConfigID = config.ID
+							db.Create(&xmlTopic)
+						} else {
+							topic.ARN = targetResource.ARN()
+							topic.ResourceID = targetResource.ID
+							db.Save(&topic)
+						}
+					}
+				}
 			}
-
-			writeErrorResponse(c, apiErr)
-			return
-		}
-
-		if err = saveNotificationConfig(config, bucket); err != nil {
-			writeErrorResponse(c, cmd.ToAPIErrorCode(err))
-			return
+		} else {
+			for _, queue := range xmlConfig.Queues {
+				targetResource, err := models.ParseARN(queue.ARN)
+				if err != nil {
+					writeErrorResponse(c, cmd.ErrARNNotification)
+					return
+				}
+				db.Where(models.Resource{
+					AccountID: targetResource.AccountID,
+					Service:   targetResource.Service,
+					Name:      targetResource.Name,
+				}).First(&targetResource)
+				queue.ResourceID = targetResource.ID
+				db.Save(&queue)
+			}
+			for _, topic := range xmlConfig.Topics {
+				targetResource, err := models.ParseARN(topic.ARN)
+				if err != nil {
+					writeErrorResponse(c, cmd.ErrARNNotification)
+					return
+				}
+				db.Where(models.Resource{
+					AccountID: targetResource.AccountID,
+					Service:   targetResource.Service,
+					Name:      targetResource.Name,
+				}).First(&targetResource)
+				topic.ResourceID = targetResource.ID
+				db.Save(&topic)
+			}
 		}
 
 		c.Status(http.StatusOK)
@@ -123,32 +219,6 @@ func PutBucketNotification(c *gin.Context) {
 	}
 
 	ReverseProxy()(c)
-}
-
-func readNotificationConfig(targetList *event.TargetList, bucket string) (*event.Config, error) {
-	client := models.GetCache()
-	val, err := client.Get(fmt.Sprintf("config:%s", bucket)).Result()
-	if err != nil {
-		return nil, errNoSuchNotifications
-	}
-
-	config, err := event.ParseConfig(strings.NewReader(val), "us-east-1", targetList)
-
-	return config, err
-}
-
-func saveNotificationConfig(conf *event.Config, bucket string) error {
-	output, err := xml.Marshal(conf)
-	if err != nil {
-		return nil
-	}
-
-	client := models.GetCache()
-	if err := client.Set(fmt.Sprintf("config:%s", bucket), output, 0).Err(); err != nil {
-		return nil
-	}
-
-	return nil
 }
 
 func checkResponse(resp *http.Response, method string, statusCode int) bool {
