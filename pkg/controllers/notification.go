@@ -23,10 +23,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
+	"regexp"
 	"strings"
 	"time"
 
+	sh "github.com/codeskyblue/go-sh"
 	"github.com/gin-gonic/gin"
+	"github.com/go-sql-driver/mysql"
+	"github.com/gocelery/gocelery"
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/models"
 	"github.com/inwinstack/kaoliang/pkg/utils"
@@ -34,7 +38,6 @@ import (
 	"github.com/minio/minio/pkg/event"
 )
 
-var targetList *event.TargetList
 var errNoSuchNotifications = errors.New("The specified bucket does not have bucket notifications")
 
 func PreflightRequest(c *gin.Context) {
@@ -52,27 +55,32 @@ func PreflightRequest(c *gin.Context) {
 }
 
 func GetBucketNotification(c *gin.Context) {
-	_, err := authenticate(c.Request)
-	if err != cmd.ErrNone {
-		writeErrorResponse(c, err)
+	userID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	bucket := c.Param("bucket")
+	users, ok := getBucketUsers(bucket)
+	if !ok {
+		writeErrorResponse(c, cmd.ErrNoSuchBucket)
+		return
+	}
 
-	_, notification := c.GetQuery("notification")
+	if !contains(users, userID) {
+		writeErrorResponse(c, cmd.ErrAccessDenied)
+		return
+	}
 
-	if notification {
+	if _, ok := c.GetQuery("notification"); ok {
 		c.Header("Access-Control-Allow-Origin", "*")
-		nConfig, err := readNotificationConfig(targetList, bucket)
-		if err != nil {
-			if err != errNoSuchNotifications {
-				writeErrorResponse(c, cmd.ToAPIErrorCode(err))
-				return
-			}
-
-			nConfig = &event.Config{}
-		}
-
+		db := models.GetDB()
+		nConfig := models.Config{}
+		db.Where(&models.Config{Bucket: bucket}).
+			Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+			Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
+			First(&nConfig)
 		c.XML(http.StatusOK, nConfig)
 		return
 	}
@@ -81,34 +89,130 @@ func GetBucketNotification(c *gin.Context) {
 }
 
 func PutBucketNotification(c *gin.Context) {
-	_, err := authenticate(c.Request)
-	if err != cmd.ErrNone {
-		writeErrorResponse(c, err)
+	userID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	bucket := c.Param("bucket")
-	serverConfig := config.GetServerConfig()
+	users, ok := getBucketUsers(bucket)
+	if !ok {
+		writeErrorResponse(c, cmd.ErrNoSuchBucket)
+		return
+	}
 
-	_, notification := c.GetQuery("notification")
+	if !contains(users, userID) {
+		writeErrorResponse(c, cmd.ErrAccessDenied)
+		return
+	}
 
-	if notification {
+	if _, ok := c.GetQuery("notification"); ok {
 		c.Header("Access-Control-Allow-Origin", "*")
-		region := serverConfig.Region
+		xmlConfig := models.Config{}
+		data, _ := ioutil.ReadAll(c.Request.Body)
+		xml.Unmarshal(data, &xmlConfig)
+		xmlConfig.Bucket = bucket
+		db := models.GetDB()
 
-		config, err := event.ParseConfig(c.Request.Body, region, targetList)
-		if err != nil {
-			apiErr := cmd.ErrMalformedXML
-			if event.IsEventError(err) {
-				apiErr = cmd.ToAPIErrorCode(err)
+		if err := db.Create(&xmlConfig).Error; err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				if mysqlErr.Number == 1062 {
+					config := models.Config{}
+					db.Where(&models.Config{Bucket: bucket}).
+						Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+						Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
+						First(&config)
+					for _, xmlQueue := range xmlConfig.Queues {
+						targetResource, err := models.ParseARN(xmlQueue.ARN)
+						if err != nil {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+						if db.Where(models.Resource{
+							AccountID: targetResource.AccountID,
+							Service:   targetResource.Service,
+							Name:      targetResource.Name,
+						}).First(&targetResource).RecordNotFound() {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+
+						queue := models.Queue{}
+						if db.Where(models.Queue{
+							QueueIdentifier: xmlQueue.QueueIdentifier,
+							ConfigID:        config.ID,
+						}).First(&queue).RecordNotFound() {
+							xmlQueue.ResourceID = targetResource.ID
+							xmlQueue.ConfigID = config.ID
+							db.Create(&xmlQueue)
+						} else {
+							queue.ARN = targetResource.ARN()
+							queue.ResourceID = targetResource.ID
+							db.Save(&queue)
+						}
+					}
+
+					for _, xmlTopic := range xmlConfig.Topics {
+						targetResource, err := models.ParseARN(xmlTopic.ARN)
+						if err != nil {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+						if db.Where(models.Resource{
+							AccountID: targetResource.AccountID,
+							Service:   targetResource.Service,
+							Name:      targetResource.Name,
+						}).First(&targetResource).RecordNotFound() {
+							writeErrorResponse(c, cmd.ErrARNNotification)
+							return
+						}
+
+						topic := models.Topic{}
+						if db.Where(models.Topic{
+							TopicIdentifier: xmlTopic.TopicIdentifier,
+							ConfigID:        config.ID,
+						}).First(&topic).RecordNotFound() {
+							xmlTopic.ResourceID = targetResource.ID
+							xmlTopic.ConfigID = config.ID
+							db.Create(&xmlTopic)
+						} else {
+							topic.ARN = targetResource.ARN()
+							topic.ResourceID = targetResource.ID
+							db.Save(&topic)
+						}
+					}
+				}
 			}
-
-			writeErrorResponse(c, apiErr)
-			return
-		}
-
-		if err = saveNotificationConfig(config, bucket); err != nil {
-			writeErrorResponse(c, cmd.ToAPIErrorCode(err))
-			return
+		} else {
+			for _, queue := range xmlConfig.Queues {
+				targetResource, err := models.ParseARN(queue.ARN)
+				if err != nil {
+					writeErrorResponse(c, cmd.ErrARNNotification)
+					return
+				}
+				db.Where(models.Resource{
+					AccountID: targetResource.AccountID,
+					Service:   targetResource.Service,
+					Name:      targetResource.Name,
+				}).First(&targetResource)
+				queue.ResourceID = targetResource.ID
+				db.Save(&queue)
+			}
+			for _, topic := range xmlConfig.Topics {
+				targetResource, err := models.ParseARN(topic.ARN)
+				if err != nil {
+					writeErrorResponse(c, cmd.ErrARNNotification)
+					return
+				}
+				db.Where(models.Resource{
+					AccountID: targetResource.AccountID,
+					Service:   targetResource.Service,
+					Name:      targetResource.Name,
+				}).First(&targetResource)
+				topic.ResourceID = targetResource.ID
+				db.Save(&topic)
+			}
 		}
 
 		c.Status(http.StatusOK)
@@ -116,32 +220,6 @@ func PutBucketNotification(c *gin.Context) {
 	}
 
 	ReverseProxy()(c)
-}
-
-func readNotificationConfig(targetList *event.TargetList, bucket string) (*event.Config, error) {
-	client := models.GetCache()
-	val, err := client.Get(fmt.Sprintf("config:%s", bucket)).Result()
-	if err != nil {
-		return nil, errNoSuchNotifications
-	}
-
-	config, err := event.ParseConfig(strings.NewReader(val), "us-east-1", targetList)
-
-	return config, err
-}
-
-func saveNotificationConfig(conf *event.Config, bucket string) error {
-	output, err := xml.Marshal(conf)
-	if err != nil {
-		return nil
-	}
-
-	client := models.GetCache()
-	if err := client.Set(fmt.Sprintf("config:%s", bucket), output, 0).Err(); err != nil {
-		return nil
-	}
-
-	return nil
 }
 
 func checkResponse(resp *http.Response, method string, statusCode int) bool {
@@ -154,13 +232,20 @@ func checkResponse(resp *http.Response, method string, statusCode int) bool {
 	return false
 }
 
-// currently only supports path-style syntax
-func getObjectName(req *http.Request) (string, string, error) {
-	segments := strings.Split(req.URL.Path, "/")
-	bucketName := segments[1]
-	objectName := segments[2]
+func getObjectName(req *http.Request) (bucketName string, objectName string, err error) {
+	config := config.GetServerConfig()
+	re := regexp.MustCompile("([A-Za-z0-9]*)\\." + config.Host)
+	if group := re.FindStringSubmatch(req.Host); len(group) == 2 {
+		bucketName = group[1]
+		segments := strings.Split(req.URL.Path, "/")
+		objectName = strings.Join(segments[1:], "/")
+	} else { // path-style syntax
+		segments := strings.Split(req.URL.Path, "/")
+		bucketName = segments[1]
+		objectName = strings.Join(segments[2:], "/")
+	}
 
-	return bucketName, objectName, nil
+	return
 }
 
 func sendEvent(resp *http.Response, eventType event.Name) error {
@@ -169,10 +254,12 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 
 	client := models.GetCache()
 	serverConfig := config.GetServerConfig()
-	nConfig, err := readNotificationConfig(targetList, bucketName)
-	if err != nil {
-		panic(err)
-	}
+	nConfig := models.Config{}
+	db := models.GetDB()
+	db.Where(&models.Config{Bucket: bucketName}).
+		Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+		Preload("Topics.Events").Preload("Topics.Resource.Endpoints").Preload("Topics.Filter.RuleList.Rules").
+		First(&nConfig)
 
 	rulesMap := nConfig.ToRulesMap()
 	eventTime := time.Now().UTC()
@@ -182,7 +269,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 		etag = val[0]
 	}
 
-	for targetID := range rulesMap[eventType].Match(objectName) {
+	for _, resource := range rulesMap[eventType].Match(objectName) {
 		newEvent := event.Event{
 			EventVersion: "2.0",
 			EventSource:  "aws:s3",
@@ -221,10 +308,19 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 		if err != nil {
 			panic(err)
 		}
-		client.RPush(fmt.Sprintf("%s:%s:%s", targetID.Service, targetID.ID, targetID.Name), value)
+
+		switch resource.Service {
+		case models.SQS:
+			client.RPush(fmt.Sprintf("%s:%s:%s", resource.Service.String(), resource.AccountID, resource.Name), value)
+		case models.SNS:
+			celeryBroker, celeryBackend := models.GetCelery()
+			celeryClient, _ := gocelery.NewCeleryClient(celeryBroker, celeryBackend, 0)
+
+			for _, endpoint := range resource.Endpoints {
+				celeryClient.Delay("worker.send_event", endpoint.URI, string(value))
 	}
 
-	return err
+	return nil
 }
 
 func isMultipartUpload(request *http.Request) bool {
@@ -273,4 +369,45 @@ func ReverseProxy() gin.HandlerFunc {
 		proxy := &httputil.ReverseProxy{Director: director, ModifyResponse: modifyResponse}
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
+}
+
+type Grant struct {
+	ID string `json:id`
+}
+
+type Policy struct {
+	ACL ACL `json:"acl"`
+}
+
+type ACL struct {
+	GrantMap []Grant `json:"grant_map"`
+}
+
+func getBucketUsers(bucketName string) (users []string, ok bool) {
+	var policy Policy
+	output, err := sh.Command("radosgw-admin", "policy", "--bucket="+bucketName).Output()
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(output, &policy)
+	if err != nil {
+		return
+	}
+
+	for _, grant := range policy.ACL.GrantMap {
+		users = append(users, grant.ID)
+	}
+
+	return users, true
+}
+
+func contains(users []string, user string) bool {
+	for _, u := range users {
+		if u == user {
+			return true
+		}
+	}
+
+	return false
 }
