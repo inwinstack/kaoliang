@@ -29,6 +29,7 @@ import (
 
 	sh "github.com/codeskyblue/go-sh"
 	"github.com/gin-gonic/gin"
+	"github.com/go-sql-driver/mysql"
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/models"
 	"github.com/inwinstack/kaoliang/pkg/utils"
@@ -54,27 +55,32 @@ func PreflightRequest(c *gin.Context) {
 }
 
 func GetBucketNotification(c *gin.Context) {
-	_, err := authenticate(c.Request)
-	if err != cmd.ErrNone {
-		writeErrorResponse(c, err)
+	userID, errCode := authenticate(c.Request)
+	if errCode != cmd.ErrNone {
+		writeErrorResponse(c, errCode)
+		return
 	}
 
 	bucket := c.Param("bucket")
+	users, ok := getBucketUsers(bucket)
+	if !ok {
+		writeErrorResponse(c, cmd.ErrNoSuchBucket)
+		return
+	}
 
-	_, notification := c.GetQuery("notification")
+	if !contains(users, userID) {
+		writeErrorResponse(c, cmd.ErrAccessDenied)
+		return
+	}
 
-	if notification {
+	if _, ok := c.GetQuery("notification"); ok {
 		c.Header("Access-Control-Allow-Origin", "*")
-		nConfig, err := readNotificationConfig(targetList, bucket)
-		if err != nil {
-			if err != errNoSuchNotifications {
-				writeErrorResponse(c, cmd.ToAPIErrorCode(err))
-				return
-			}
-
-			nConfig = &event.Config{}
-		}
-
+		db := models.GetDB()
+		nConfig := models.Config{}
+		db.Where(&models.Config{Bucket: bucket}).
+			Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+			Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
+			First(&nConfig)
 		c.XML(http.StatusOK, nConfig)
 		return
 	}
