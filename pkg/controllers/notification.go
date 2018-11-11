@@ -318,6 +318,8 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 
 			for _, endpoint := range resource.Endpoints {
 				celeryClient.Delay("worker.send_event", endpoint.URI, string(value))
+			}
+		}
 	}
 
 	return nil
