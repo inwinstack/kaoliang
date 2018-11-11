@@ -205,7 +205,7 @@ func ReceiveMessage(c *gin.Context) {
 			MessageID:     msgId.String(),
 			ReceiptHandle: receiptHandle,
 			Body:          body,
-			MD5OfBody:     string(bodyMd5[:]),
+			MD5OfBody:     fmt.Sprintf("%s", bodyMd5),
 		}
 		msgs = append(msgs, msg)
 	}
