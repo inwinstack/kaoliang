@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	sh "github.com/codeskyblue/go-sh"
 	"github.com/gin-gonic/gin"
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/models"
@@ -281,4 +282,35 @@ func ReverseProxy() gin.HandlerFunc {
 		proxy := &httputil.ReverseProxy{Director: director, ModifyResponse: modifyResponse}
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
+}
+
+type Grant struct {
+	ID string `json:id`
+}
+
+type Policy struct {
+	ACL ACL `json:"acl"`
+}
+
+type ACL struct {
+	GrantMap []Grant `json:"grant_map"`
+}
+
+func getBucketUsers(bucketName string) (users []string, ok bool) {
+	var policy Policy
+	output, err := sh.Command("radosgw-admin", "policy", "--bucket="+bucketName).Output()
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(output, &policy)
+	if err != nil {
+		return
+	}
+
+	for _, grant := range policy.ACL.GrantMap {
+		users = append(users, grant.ID)
+	}
+
+	return users, true
 }
