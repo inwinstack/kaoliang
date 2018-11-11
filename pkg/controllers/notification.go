@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
+	"regexp"
 	"strings"
 	"time"
 
@@ -154,13 +155,20 @@ func checkResponse(resp *http.Response, method string, statusCode int) bool {
 	return false
 }
 
-// currently only supports path-style syntax
-func getObjectName(req *http.Request) (string, string, error) {
-	segments := strings.Split(req.URL.Path, "/")
-	bucketName := segments[1]
-	objectName := segments[2]
+func getObjectName(req *http.Request) (bucketName string, objectName string, err error) {
+	config := config.GetServerConfig()
+	re := regexp.MustCompile("([A-Za-z0-9]*)\\." + config.Host)
+	if group := re.FindStringSubmatch(req.Host); len(group) == 2 {
+		bucketName = group[1]
+		segments := strings.Split(req.URL.Path, "/")
+		objectName = strings.Join(segments[1:], "/")
+	} else { // path-style syntax
+		segments := strings.Split(req.URL.Path, "/")
+		bucketName = segments[1]
+		objectName = strings.Join(segments[2:], "/")
+	}
 
-	return bucketName, objectName, nil
+	return
 }
 
 func sendEvent(resp *http.Response, eventType event.Name) error {
