@@ -28,6 +28,7 @@ type ServerConfig struct {
 	Region      string
 	Host        string
 	AuthBackend AuthenticationBackend
+	Scheme      string
 }
 
 func SetServerConfig() {
@@ -35,6 +36,7 @@ func SetServerConfig() {
 		Region:      utils.GetEnv("RGW_REGION", "us-east-1"),
 		Host:        utils.GetEnv("RGW_DNS_NAME", "cloud.inwinstack.com"),
 		AuthBackend: SetAuthBackend(utils.GetEnv("AUTH_BACKEND", "DummyBackend")),
+		Scheme:      utils.GetEnv("SCHEME", "http"),
 	}
 }
 
