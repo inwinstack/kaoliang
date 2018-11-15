@@ -77,7 +77,7 @@ func main() {
 	})
 
 	r.POST("/", func(c *gin.Context) {
-		action := c.PostForm("Action")
+		action := controllers.PostForm(c, "Action")
 		switch action {
 		case "ListQueues":
 			controllers.ListQueues(c)

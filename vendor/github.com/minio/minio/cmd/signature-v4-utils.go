@@ -18,6 +18,8 @@ package cmd
 
 import (
 	"crypto/hmac"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -78,6 +80,11 @@ func getContentSha256Cksum(r *http.Request) string {
 	// We found 'X-Amz-Content-Sha256' return the captured value.
 	if ok {
 		return v[0]
+	}
+
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	if len(reqBody) > 0 {
+		return fmt.Sprintf("%x", sha256.Sum256(reqBody))
 	}
 
 	// We couldn't find 'X-Amz-Content-Sha256'.
