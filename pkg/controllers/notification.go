@@ -298,7 +298,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 					OwnerIdentity: event.Identity{
 						PrincipalID: "",
 					},
-					ARN: "",
+					ARN: resource.ARN(),
 				},
 				Object: event.Object{
 					Key:       objectName,
