@@ -19,10 +19,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/controllers"
 	"github.com/inwinstack/kaoliang/pkg/models"
+	"github.com/joho/godotenv"
 )
 
 func init() {
