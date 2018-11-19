@@ -103,7 +103,7 @@ func Search(c *gin.Context) {
 
 		boolQuery := elastic.NewBoolQuery()
 
-		re := regexp.MustCompile("(name|last_modified|content_type)(<=|<|==|=|>=|>)(.+)")
+		re := regexp.MustCompile("(name|lastmodified|contenttype|size)(<=|<|==|=|>=|>)(.+)")
 		if group := re.FindStringSubmatch(query); len(group) == 4 {
 			switch group[1] {
 			case "name":
@@ -157,6 +157,27 @@ func Search(c *gin.Context) {
 				}
 
 				if duration == time.Duration(0) && (startTime == time.Time{}) {
+					c.Status(http.StatusBadRequest)
+					return
+				}
+			case "size":
+				size, err := strconv.Atoi(group[3])
+				if err == nil && size >= 0 {
+					boolQuery = boolQuery.Must(elastic.NewMatchQuery("bucket", bucket))
+					switch group[2] {
+					case "<=":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Lte(fmt.Sprintf("%d", size)))
+					case "<":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Lt(fmt.Sprintf("%d", size)))
+					case ">=":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Gte(fmt.Sprintf("%d", size)))
+					case ">":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Gt(fmt.Sprintf("%d", size)))
+					default:
+						c.Status(http.StatusBadRequest)
+						return
+					}
+				} else {
 					c.Status(http.StatusBadRequest)
 					return
 				}
