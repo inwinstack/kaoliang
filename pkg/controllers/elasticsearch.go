@@ -103,7 +103,7 @@ func Search(c *gin.Context) {
 
 		boolQuery := elastic.NewBoolQuery()
 
-		re := regexp.MustCompile("(name|lastmodified|contenttype|size)(<=|<|==|=|>=|>)(.+)")
+		re := regexp.MustCompile("(name|lastmodified|contenttype|size|etag)(<=|<|==|=|>=|>)(.+)")
 		if group := re.FindStringSubmatch(query); len(group) == 4 {
 			switch group[1] {
 			case "name":
@@ -177,6 +177,15 @@ func Search(c *gin.Context) {
 						c.Status(http.StatusBadRequest)
 						return
 					}
+				} else {
+					c.Status(http.StatusBadRequest)
+					return
+				}
+			case "etag":
+				etag := regexp.MustCompile("^[a-f0-9]{32}$")
+				if group[2] == "==" && etag.MatchString(group[3]) {
+					boolQuery = boolQuery.Must(elastic.NewTermQuery("meta.etag", group[3]))
+					boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 				} else {
 					c.Status(http.StatusBadRequest)
 					return
