@@ -161,6 +161,9 @@ func Search(c *gin.Context) {
 					return
 				}
 			}
+		} else {
+			c.Status(http.StatusBadRequest)
+			return
 		}
 		searchResult, err := client.Search().
 			Index(index).
