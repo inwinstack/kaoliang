@@ -113,17 +113,18 @@ func Search(c *gin.Context) {
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("name", group[3]))
 				boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
-			case "content_type":
+			case "contenttype":
 				if group[2] != "==" {
 					c.Status(http.StatusBadRequest)
 					return
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("meta.content_type", group[3]))
 				boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
-			case "last_modified":
+			case "lastmodified":
 				boolQuery = boolQuery.Must(elastic.NewMatchQuery("bucket", bucket))
-				duration, err := time.ParseDuration(group[3])
-				if err == nil {
+				duration := regexp.MustCompile("^[1-9][0-9]*[s|m|h|d|w|M|y]$")
+				matchedDuration := duration.MatchString(group[3])
+				if matchedDuration {
 					switch group[2] {
 					case "<=":
 						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Gte(fmt.Sprintf("now-%s", group[3])).Lte("now"))
@@ -156,7 +157,7 @@ func Search(c *gin.Context) {
 					}
 				}
 
-				if duration == time.Duration(0) && (startTime == time.Time{}) {
+				if !matchedDuration && (startTime == time.Time{}) {
 					c.Status(http.StatusBadRequest)
 					return
 				}
