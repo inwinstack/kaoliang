@@ -67,7 +67,7 @@ type Resource struct {
 func (r Resource) URL() string {
 	config := config.GetServerConfig()
 
-	return fmt.Sprintf("http://%s/%s/%s", config.Host, r.AccountID, r.Name)
+	return fmt.Sprintf("%s://%s/%s/%s", config.Scheme, config.Host, r.AccountID, r.Name)
 }
 
 func (r Resource) ARN() string {

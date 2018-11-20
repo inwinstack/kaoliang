@@ -123,6 +123,11 @@ func PutBucketNotification(c *gin.Context) {
 						Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
 						Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
 						First(&config)
+					if len(xmlConfig.Queues) == 0 && len(xmlConfig.Topics) == 0 {
+						db.Delete(&config)
+						c.Status(http.StatusOK)
+						return
+					}
 					for _, xmlQueue := range xmlConfig.Queues {
 						targetResource, err := models.ParseARN(xmlQueue.ARN)
 						if err != nil {
@@ -293,7 +298,7 @@ func sendEvent(resp *http.Response, eventType event.Name) error {
 					OwnerIdentity: event.Identity{
 						PrincipalID: "",
 					},
-					ARN: "",
+					ARN: resource.ARN(),
 				},
 				Object: event.Object{
 					Key:       objectName,
