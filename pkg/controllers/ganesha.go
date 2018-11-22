@@ -34,6 +34,7 @@ import (
 type RgwUser struct {
 	UserId      string   `json:"user_id"`
 	DisplayName string   `json:"display_name"`
+	MaxBuckets  int      `json:"max_buckets"`
 	Keys        []RgwKey `json:"keys"`
 }
 
@@ -68,6 +69,10 @@ func addNfsExport(body []byte) {
 	}
 	// only export when create user (same request only add key on second times)
 	if len(userData.Keys) > 1 {
+		return
+	}
+	// no bucket can created on this user, should not export
+	if userData.MaxBuckets == -1 {
 		return
 	}
 	nfsCfgPool := utils.GetEnv("NFS_CONFIG_POOL", "nfs-ganesha")
