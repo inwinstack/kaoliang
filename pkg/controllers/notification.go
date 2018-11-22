@@ -349,6 +349,7 @@ func ReverseProxy() gin.HandlerFunc {
 		}
 
 		modifyResponse := func(resp *http.Response) error {
+			cfg := config.GetServerConfig()
 			clientReq := resp.Request
 
 			switch {
@@ -358,15 +359,19 @@ func ReverseProxy() gin.HandlerFunc {
 				go HandleNfsExport(clientReq, b)
 				resp.Body = ioutil.NopCloser(bytes.NewReader(b)) // put body back for client response
 				return nil
-			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0:
+			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0 && cfg.EnableKaoliangCopy == "True":
 				return sendEvent(resp, event.ObjectCreatedCopy)
 			case checkResponse(resp, "POST", 200) && len(clientReq.URL.Query()["uploadId"]) != 0:
 				go InheritNfsPermission(*clientReq)
 				return sendEvent(resp, event.ObjectCreatedCompleteMultipartUpload)
 			case len(resp.Header["Etag"]) > 0 && checkResponse(resp, "PUT", 200) && !isMultipartUpload(clientReq):
 				go InheritNfsPermission(*clientReq)
-				return sendEvent(resp, event.ObjectCreatedPut)
-			case checkResponse(resp, "DELETE", 204):
+				if cfg.EnableKaoliangCreate == "True" {
+					return sendEvent(resp, event.ObjectCreatedPut)
+				}
+
+				return nil
+			case checkResponse(resp, "DELETE", 204) && cfg.EnableKaoliangDelete == "True":
 				return sendEvent(resp, event.ObjectRemovedDelete)
 			default:
 				return nil

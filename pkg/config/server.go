@@ -25,18 +25,24 @@ import (
 var serverConfig *ServerConfig
 
 type ServerConfig struct {
-	Region      string
-	Host        string
-	AuthBackend AuthenticationBackend
-	Scheme      string
+	Region               string
+	Host                 string
+	AuthBackend          AuthenticationBackend
+	Scheme               string
+	EnableKaoliangCreate string
+	EnableKaoliangCopy   string
+	EnableKaoliangDelete string
 }
 
 func SetServerConfig() {
 	serverConfig = &ServerConfig{
-		Region:      utils.GetEnv("RGW_REGION", "us-east-1"),
-		Host:        utils.GetEnv("RGW_DNS_NAME", "cloud.inwinstack.com"),
-		AuthBackend: SetAuthBackend(utils.GetEnv("AUTH_BACKEND", "DummyBackend")),
-		Scheme:      utils.GetEnv("SCHEME", "http"),
+		Region:               utils.GetEnv("RGW_REGION", "us-east-1"),
+		Host:                 utils.GetEnv("RGW_DNS_NAME", "cloud.inwinstack.com"),
+		AuthBackend:          SetAuthBackend(utils.GetEnv("AUTH_BACKEND", "DummyBackend")),
+		Scheme:               utils.GetEnv("SCHEME", "http"),
+		EnableKaoliangCreate: utils.GetEnv("ENABLE_KAOLIANG_CREATE", "True"),
+		EnableKaoliangCopy:   utils.GetEnv("ENABLE_KAOLIANG_COPY", "True"),
+		EnableKaoliangDelete: utils.GetEnv("ENABLE_KAOLIANG_DELETE", "True"),
 	}
 }
 
