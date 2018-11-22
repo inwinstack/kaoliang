@@ -103,7 +103,7 @@ func Search(c *gin.Context) {
 
 		boolQuery := elastic.NewBoolQuery()
 
-		re := regexp.MustCompile("(name|last_modified|content_type)(<=|<|==|=|>=|>)(.+)")
+		re := regexp.MustCompile("(name|lastmodified|contenttype|size|etag)(<=|<|==|=|>=|>)(.+)")
 		if group := re.FindStringSubmatch(query); len(group) == 4 {
 			switch group[1] {
 			case "name":
@@ -113,26 +113,27 @@ func Search(c *gin.Context) {
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("name", group[3]))
 				boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
-			case "content_type":
+			case "contenttype":
 				if group[2] != "==" {
 					c.Status(http.StatusBadRequest)
 					return
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("meta.content_type", group[3]))
 				boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
-			case "last_modified":
+			case "lastmodified":
 				boolQuery = boolQuery.Must(elastic.NewMatchQuery("bucket", bucket))
-				duration, err := time.ParseDuration(group[3])
-				if err == nil {
+				duration := regexp.MustCompile("^[1-9][0-9]*[s|m|h|d|w|M|y]$")
+				matchedDuration := duration.MatchString(group[3])
+				if matchedDuration {
 					switch group[2] {
 					case "<=":
-						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Lte(fmt.Sprintf("now-%s", group[3])))
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Gte(fmt.Sprintf("now-%s", group[3])).Lte("now"))
 					case "<":
-						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Lt(fmt.Sprintf("now-%s", group[3])))
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Gt(fmt.Sprintf("now-%s", group[3])).Lt("now"))
 					case ">=":
-						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Gte(fmt.Sprintf("now-%s", group[3])))
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Lte(fmt.Sprintf("now-%s", group[3])))
 					case ">":
-						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Gt(fmt.Sprintf("now-%s", group[3])))
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Lt(fmt.Sprintf("now-%s", group[3])))
 					default:
 						c.Status(http.StatusBadRequest)
 						return
@@ -156,11 +157,44 @@ func Search(c *gin.Context) {
 					}
 				}
 
-				if duration == time.Duration(0) && (startTime == time.Time{}) {
+				if !matchedDuration && (startTime == time.Time{}) {
+					c.Status(http.StatusBadRequest)
+					return
+				}
+			case "size":
+				size, err := strconv.Atoi(group[3])
+				if err == nil && size >= 0 {
+					boolQuery = boolQuery.Must(elastic.NewMatchQuery("bucket", bucket))
+					switch group[2] {
+					case "<=":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Lte(fmt.Sprintf("%d", size)))
+					case "<":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Lt(fmt.Sprintf("%d", size)))
+					case ">=":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Gte(fmt.Sprintf("%d", size)))
+					case ">":
+						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Gt(fmt.Sprintf("%d", size)))
+					default:
+						c.Status(http.StatusBadRequest)
+						return
+					}
+				} else {
+					c.Status(http.StatusBadRequest)
+					return
+				}
+			case "etag":
+				etag := regexp.MustCompile("^[a-f0-9]{32}$")
+				if group[2] == "==" && etag.MatchString(group[3]) {
+					boolQuery = boolQuery.Must(elastic.NewTermQuery("meta.etag", group[3]))
+					boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
+				} else {
 					c.Status(http.StatusBadRequest)
 					return
 				}
 			}
+		} else {
+			c.Status(http.StatusBadRequest)
+			return
 		}
 		searchResult, err := client.Search().
 			Index(index).
