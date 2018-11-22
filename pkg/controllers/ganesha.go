@@ -43,7 +43,7 @@ type RgwKey struct {
 }
 
 func random(min int, max int) int {
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 	return rand.Intn(max-min) + min
 }
 
@@ -143,13 +143,38 @@ func removeExportPathToList(ioctx *rados.IOContext, exportName string, poolName 
 	ioctx.Unlock(exportName, lock, cookie)
 }
 
+func generateExportId(ioctx *rados.IOContext, prefix string) int {
+	exportIds := make(map[string]bool)
+	// load existed export id
+	ioctx.ListObjects(func(oid string) {
+		if !strings.HasPrefix(oid, prefix) {
+			return
+		}
+		exportId := make([]byte, 100)
+		len, err := ioctx.GetXattr(oid, "export_id", exportId)
+		if err != nil {
+			return
+		}
+		exportIds[string(exportId[0:len])] = true
+	})
+	retry := 0
+	for retry < 65535 {
+		exportId := random(1, 65535) // 0 is for root
+		if _, existed := exportIds[fmt.Sprint(exportId)]; !existed {
+			return exportId
+		}
+		retry = retry + 1
+	}
+	return -1
+}
+
 func createNfsExportObj(ioctx *rados.IOContext, data *RgwUser) string {
 	userId := data.UserId
 	accessKey := data.Keys[0].AccessKey
 	secretKey := data.Keys[0].SecretKey
 	displayName := data.DisplayName
 
-	exportId := random(1, 65535) // 0 is for root
+	exportId := generateExportId(ioctx, "export_")
 
 	exportTmplName := utils.GetEnv("NFS_EXPORT_TMPL", "export.tmpl")
 	exportTmpl := loadExportTemplate(ioctx, exportTmplName)
@@ -159,6 +184,7 @@ func createNfsExportObj(ioctx *rados.IOContext, data *RgwUser) string {
 
 	// put pseudo (export path) to xattr
 	ioctx.SetXattr(exportObjName, "pseudo", []byte(displayName))
+	ioctx.SetXattr(exportObjName, "export_id", []byte(fmt.Sprint(exportId)))
 	return exportObjName
 }
 
