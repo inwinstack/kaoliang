@@ -2,7 +2,7 @@ package models
 
 import (
 	"github.com/gocelery/gocelery"
-	"gitlab.com/stor-inwinstack/kaoliang/pkg/utils"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 var (
