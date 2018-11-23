@@ -1,3 +1,5 @@
 .env
 kaoliang
 elasticsearch/elasticsearch
+sqs/sqs
+sns/sns
