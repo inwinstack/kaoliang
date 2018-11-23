@@ -32,6 +32,7 @@ type ServerConfig struct {
 	EnableKaoliangCreate string
 	EnableKaoliangCopy   string
 	EnableKaoliangDelete string
+	EnableElasticCreate  string
 }
 
 func SetServerConfig() {
@@ -43,6 +44,7 @@ func SetServerConfig() {
 		EnableKaoliangCreate: utils.GetEnv("ENABLE_KAOLIANG_CREATE", "True"),
 		EnableKaoliangCopy:   utils.GetEnv("ENABLE_KAOLIANG_COPY", "True"),
 		EnableKaoliangDelete: utils.GetEnv("ENABLE_KAOLIANG_DELETE", "True"),
+		EnableElasticCreate:  utils.GetEnv("ENABLE_ELASTIC_CREATE", "True"),
 	}
 }
 
