@@ -1,0 +1,12 @@
+[Unit]
+Description=SQS-like service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/opt/kaoliang/sqs
+ExecStart=/opt/kaoliang/sqs/sqs
+
+[Install]
+WantedBy=multi-user.target

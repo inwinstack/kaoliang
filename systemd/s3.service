@@ -1,0 +1,12 @@
+[Unit]
+Description=S3-like service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/opt/kaoliang/s3
+ExecStart=/opt/kaoliang/s3/kaoliang
+
+[Install]
+WantedBy=multi-user.target
