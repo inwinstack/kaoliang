@@ -1,0 +1,12 @@
+[Unit]
+Description=Elasticsearch notify service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/opt/kaoliang/elastic-notify
+ExecStart=/opt/kaoliang/elastic-notify/elastic-notify
+
+[Install]
+WantedBy=multi-user.target

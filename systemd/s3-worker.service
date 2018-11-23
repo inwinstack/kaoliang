@@ -1,0 +1,12 @@
+[Unit]
+Description=S3 Worker
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/opt/kaoliang/kaoliang-worker
+ExecStart=/usr/bin/pipenv run celery -A worker worker --loglevel=debug --without-heartbeat --without-mingle
+
+[Install]
+WantedBy=multi-user.target

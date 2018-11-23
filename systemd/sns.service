@@ -1,0 +1,12 @@
+[Unit]
+Description=SNS-like service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/opt/kaoliang/sns
+ExecStart=/opt/kaoliang/sns/sns
+
+[Install]
+WantedBy=multi-user.target
