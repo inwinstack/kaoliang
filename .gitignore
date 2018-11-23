@@ -1,6 +1,6 @@
 .env
 kaoliang
-elasticsearch/elasticsearch
+mdsearch/mdsearch
 sqs/sqs
 sns/sns
 elastic-notify/elastic-notify
