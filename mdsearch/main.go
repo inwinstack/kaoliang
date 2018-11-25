@@ -8,6 +8,7 @@ import (
 
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/controllers"
+	"github.com/inwinstack/kaoliang/pkg/models"
 )
 
 func init() {
@@ -17,6 +18,7 @@ func init() {
 	}
 
 	config.SetServerConfig()
+	models.SetElasticsearch()
 }
 
 func main() {

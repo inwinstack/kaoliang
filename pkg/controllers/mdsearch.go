@@ -13,6 +13,7 @@ import (
 	"github.com/minio/minio/cmd"
 	"github.com/olivere/elastic"
 
+	"github.com/inwinstack/kaoliang/pkg/models"
 	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
@@ -94,11 +95,10 @@ func Search(c *gin.Context) {
 		}
 
 		ctx := context.Background()
-		client, err := elastic.NewClient(
-			elastic.SetURL(utils.GetEnv("ELS_URL", "http://localhost:9200")),
-		)
-		if err != nil {
+		client := models.GetElasticsearch()
+		if client == nil {
 			c.Status(http.StatusGatewayTimeout)
+			return
 		}
 
 		boolQuery := elastic.NewBoolQuery()
