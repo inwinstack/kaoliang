@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gocelery/gocelery"
@@ -55,39 +56,48 @@ func init() {
 }
 
 func main() {
-	addr := flag.String("addr", utils.GetEnv("CHANGES_ADDR", "localhost:9400"), "http service address")
-	flag.Parse()
-
-	u := url.URL{
-		Scheme: "ws",
-		Host:   *addr,
-		Path:   "/ws/_changes",
-	}
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatalf("An error occurred while dialing to feed of changes service. %s", err)
-	}
-
-	defer c.Close()
-
-	cfg := config.GetServerConfig()
-
 	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Printf("An error occurred while reading message from WebSocket connection. %s", err)
-			continue
-		}
+		addrs := strings.Split(utils.GetEnv("CHANGES_ADDR", "localhost:9400"), ", ")
 
-		change := Change{}
-		json.Unmarshal(message, &change)
+		for _, addr := range addrs {
+			changesAddr := flag.String("addr", strings.Trim(addr, " "), "http service address")
+			flag.Parse()
 
-		if change.Version >= 1 {
-			log.Printf("Operation: %s, Bucket: %s, Object: %s", change.Operation, change.Source.Bucket, change.Source.Object)
-			switch {
-			case (change.Operation == "CREATE" || change.Operation == "INDEX") && cfg.EnableElasticCreate == "True":
-				sendEvent(change, event.ObjectCreatedPut)
+			u := url.URL{
+				Scheme: "ws",
+				Host:   *changesAddr,
+				Path:   "/ws/_changes",
+			}
+
+			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+			if err != nil {
+				log.Printf("An error occurred while dialing to feed of changes service. %s\n", err)
+				continue
+			}
+
+			log.Printf("Connected to %s\n", strings.Trim(addr, " "))
+
+			defer c.Close()
+
+			cfg := config.GetServerConfig()
+
+			for {
+				_, message, err := c.ReadMessage()
+				if err != nil {
+					log.Printf("An error occurred while reading message from WebSocket connection. %s\n", err)
+					break
+				}
+
+				change := Change{}
+				json.Unmarshal(message, &change)
+
+				if change.Version >= 1 {
+					log.Printf("Operation: %s, Bucket: %s, Object: %s", change.Operation, change.Source.Bucket, change.Source.Object)
+					switch {
+					case (change.Operation == "CREATE" || change.Operation == "INDEX") && cfg.EnableElasticCreate == "True":
+						sendEvent(change, event.ObjectCreatedPut)
+					}
+				}
 			}
 		}
 	}
