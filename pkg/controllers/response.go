@@ -92,6 +92,7 @@ type SubscriptionARN struct {
 	Protocol string `xml:"Protocol"`
 	ARN      string `xml:"SubscriptionArn"`
 	Owner    string `xml:"Owner"`
+	Endpoint string `xml:"Endpoint"`
 }
 
 type ListSubscriptionsResponse struct {

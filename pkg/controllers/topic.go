@@ -179,6 +179,7 @@ func ListSubscriptions(c *gin.Context) {
 					Protocol: endpoint.Protocol,
 					ARN:      topic.ARN() + ":" + endpoint.Name,
 					Owner:    topic.AccountID,
+					Endpoint: endpoint.URI,
 				})
 			}
 		}
