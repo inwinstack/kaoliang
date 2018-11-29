@@ -16,6 +16,7 @@ package controllers
 
 import (
 	"net/http"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
@@ -34,6 +35,19 @@ func CreateTopic(c *gin.Context) {
 	topicName := c.PostForm("Name")
 	db := models.GetDB()
 
+	requestID, _ := uuid.NewV4()
+	re := regexp.MustCompile("^[\\w-]{1,256}$")
+	if !re.MatchString(topicName) {
+		body := ErrorResponse{
+			Type:      "Sender",
+			Code:      "InvalidParameter",
+			Message:   "InvalidParameter: Topic Name",
+			RequestID: requestID.String(),
+		}
+		c.XML(http.StatusBadRequest, body)
+		return
+	}
+
 	topic := models.Resource{}
 	db.Where(models.Resource{
 		Service:   models.SNS,
@@ -41,7 +55,6 @@ func CreateTopic(c *gin.Context) {
 		Name:      topicName,
 	}).FirstOrCreate(&topic)
 
-	requestID, _ := uuid.NewV4()
 	body := CreateTopicResponse{
 		TopicARN:  topic.ARN(),
 		RequestID: requestID.String(),
