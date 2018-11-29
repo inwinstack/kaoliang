@@ -36,6 +36,10 @@ func ParseSubscription(s string) (*Endpoint, error) {
 
 	tokens := strings.Split(s, ":")
 
+	if len(tokens) != 7 {
+		return nil, &event.ErrInvalidARN{s}
+	}
+
 	return &Endpoint{
 		Name: tokens[6],
 	}, nil

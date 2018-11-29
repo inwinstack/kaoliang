@@ -202,7 +202,18 @@ func Unsubscribe(c *gin.Context) {
 
 	subscriptionARN := c.PostForm("SubscriptionArn")
 	targetTopic, _ := models.ParseARN(subscriptionARN)
-	targetSubscription, _ := models.ParseSubscription(subscriptionARN)
+	targetSubscription, err := models.ParseSubscription(subscriptionARN)
+	requestID, _ := uuid.NewV4()
+	if err != nil {
+		body := ErrorResponse{
+			Type:      "Sender",
+			Code:      "InvalidParameter",
+			Message:   "Invalid parameter: SubscriptionId",
+			RequestID: requestID.String(),
+		}
+		c.XML(http.StatusBadRequest, body)
+		return
+	}
 
 	topic := models.Resource{}
 	subscription := models.Endpoint{}
@@ -214,7 +225,6 @@ func Unsubscribe(c *gin.Context) {
 
 	db.Delete(&subscription)
 
-	requestID, _ := uuid.NewV4()
 	body := UnsubscribeResponse{
 		RequestID: requestID.String(),
 	}
