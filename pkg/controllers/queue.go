@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -80,6 +81,18 @@ func CreateQueue(c *gin.Context) {
 	}
 
 	requestID, _ := uuid.NewV4()
+
+	re := regexp.MustCompile("^[\\w-]{1,80}$")
+	if !re.MatchString(queueName) {
+		body := ErrorResponse{
+			Type:      "Sender",
+			Code:      "InvalidParameterValue",
+			Message:   "Can only include alphanumeric characters, hyphens, or underscores. 1 to 80 in length",
+			RequestID: requestID.String(),
+		}
+		c.XML(http.StatusBadRequest, body)
+		return
+	}
 
 	// Response Error when queue is exists
 	if !db.Where(&queue).First(&models.Resource{}).RecordNotFound() {

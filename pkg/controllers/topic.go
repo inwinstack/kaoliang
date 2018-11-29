@@ -16,6 +16,7 @@ package controllers
 
 import (
 	"net/http"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
@@ -34,6 +35,19 @@ func CreateTopic(c *gin.Context) {
 	topicName := c.PostForm("Name")
 	db := models.GetDB()
 
+	requestID, _ := uuid.NewV4()
+	re := regexp.MustCompile("^[\\w-]{1,256}$")
+	if !re.MatchString(topicName) {
+		body := ErrorResponse{
+			Type:      "Sender",
+			Code:      "InvalidParameter",
+			Message:   "InvalidParameter: Topic Name",
+			RequestID: requestID.String(),
+		}
+		c.XML(http.StatusBadRequest, body)
+		return
+	}
+
 	topic := models.Resource{}
 	db.Where(models.Resource{
 		Service:   models.SNS,
@@ -41,7 +55,6 @@ func CreateTopic(c *gin.Context) {
 		Name:      topicName,
 	}).FirstOrCreate(&topic)
 
-	requestID, _ := uuid.NewV4()
 	body := CreateTopicResponse{
 		TopicARN:  topic.ARN(),
 		RequestID: requestID.String(),
@@ -166,6 +179,7 @@ func ListSubscriptions(c *gin.Context) {
 					Protocol: endpoint.Protocol,
 					ARN:      topic.ARN() + ":" + endpoint.Name,
 					Owner:    topic.AccountID,
+					Endpoint: endpoint.URI,
 				})
 			}
 		}
@@ -188,7 +202,18 @@ func Unsubscribe(c *gin.Context) {
 
 	subscriptionARN := c.PostForm("SubscriptionArn")
 	targetTopic, _ := models.ParseARN(subscriptionARN)
-	targetSubscription, _ := models.ParseSubscription(subscriptionARN)
+	targetSubscription, err := models.ParseSubscription(subscriptionARN)
+	requestID, _ := uuid.NewV4()
+	if err != nil {
+		body := ErrorResponse{
+			Type:      "Sender",
+			Code:      "InvalidParameter",
+			Message:   "Invalid parameter: SubscriptionId",
+			RequestID: requestID.String(),
+		}
+		c.XML(http.StatusBadRequest, body)
+		return
+	}
 
 	topic := models.Resource{}
 	subscription := models.Endpoint{}
@@ -200,7 +225,6 @@ func Unsubscribe(c *gin.Context) {
 
 	db.Delete(&subscription)
 
-	requestID, _ := uuid.NewV4()
 	body := UnsubscribeResponse{
 		RequestID: requestID.String(),
 	}
