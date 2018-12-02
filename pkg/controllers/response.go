@@ -53,7 +53,7 @@ type Message struct {
 }
 
 type ErrorResponse struct {
-	XMLName   xml.Name `xml:"ErrorResponse"`
+	XMLName   xml.Name `xml:"ErrorResponse" json:"-"`
 	Type      string   `xml:"Error>Type"`
 	Code      string   `xml:"Error>Code"`
 	Message   string   `xml:"Error>Message"`

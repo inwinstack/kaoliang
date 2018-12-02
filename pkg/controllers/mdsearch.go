@@ -7,11 +7,13 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
 	"github.com/olivere/elastic"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/inwinstack/kaoliang/pkg/models"
 	"github.com/inwinstack/kaoliang/pkg/utils"
@@ -63,6 +65,12 @@ type ObjectType struct {
 	VersionedEpoch int64    `json:"versioned_epoch"`
 }
 
+func escape(s string) (escaped string) {
+	escaped = strings.Replace(s, "\n", "<br>", -1)
+	escaped = strings.Replace(escaped, "\t", " ", -1)
+	return
+}
+
 func Search(c *gin.Context) {
 	userID, errCode := authenticate(c.Request)
 	if errCode != cmd.ErrNone {
@@ -103,19 +111,32 @@ func Search(c *gin.Context) {
 
 		boolQuery := elastic.NewBoolQuery()
 
+		requestID, _ := uuid.NewV4()
 		re := regexp.MustCompile("(name|lastmodified|contenttype|size|etag)(<=|<|==|=|>=|>)(.+)")
 		if group := re.FindStringSubmatch(query); len(group) == 4 {
 			switch group[1] {
 			case "name":
 				if group[2] != "==" {
-					c.Status(http.StatusBadRequest)
+					body := ErrorResponse{
+						Type:      "Sender",
+						Code:      "InvalidSyntax",
+						Message:   "Syntax should be name==(filename), the filename must include wildcard character e.g. *txt",
+						RequestID: requestID.String(),
+					}
+					c.JSON(http.StatusBadRequest, body)
 					return
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("name", group[3]))
 				boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 			case "contenttype":
 				if group[2] != "==" {
-					c.Status(http.StatusBadRequest)
+					body := ErrorResponse{
+						Type:      "Sender",
+						Code:      "InvalidSyntax",
+						Message:   "Syntax should be contenttype==(type), the type must include wildcard character e.g. *jpg",
+						RequestID: requestID.String(),
+					}
+					c.JSON(http.StatusBadRequest, body)
 					return
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("meta.content_type", group[3]))
@@ -135,7 +156,15 @@ func Search(c *gin.Context) {
 					case ">":
 						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Lt(fmt.Sprintf("now-%s", group[3])))
 					default:
-						c.Status(http.StatusBadRequest)
+						body := ErrorResponse{
+							Type: "Sender",
+							Code: "InvalidSyntax",
+							Message: escape("Syntax should be lastmodified<=(duration), lastmodified<(duration)," +
+								"lastmodified>=(duration) or lastmodified>(duration)\n\n." +
+								"Duration can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3M, 2y."),
+							RequestID: requestID.String(),
+						}
+						c.JSON(http.StatusBadRequest, body)
 						return
 					}
 				}
@@ -152,13 +181,28 @@ func Search(c *gin.Context) {
 					case ">":
 						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.mtime").Gt(fmt.Sprintf("%s", startTimeISO)))
 					default:
-						c.Status(http.StatusBadRequest)
+						body := ErrorResponse{
+							Type: "Sender",
+							Code: "InvalidSyntax",
+							Message: "Syntax should be lastmodified<=(YYYY-MM-DDThh:mm), lastmodified<(YYYY-MM-DDThh:mm)," +
+								"lastmodified>=(YYYY-MM-DDThh:mm) or lastmodified<=(YYYY-MM-DDThh:mm) e.g. 2018-05-26T03:48",
+							RequestID: requestID.String(),
+						}
+						c.JSON(http.StatusBadRequest, body)
 						return
 					}
 				}
 
 				if !matchedDuration && (startTime == time.Time{}) {
-					c.Status(http.StatusBadRequest)
+					body := ErrorResponse{
+						Type: "Sender",
+						Code: "InvalidSyntax",
+						Message: escape("Syntanx should be lastmodified<=(duration or YYYY-MM-DDThh:mm), lastmodified<=(duration or YYYY-MM-DDThh:mm)," +
+							"lastmodified<=(duration or YYYY-MM-DDThh:mm) or lastmodified<=(duration or YYYY-MM-DDThh:mm).\n\n" +
+							"Durations can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3m, 2y."),
+						RequestID: requestID.String(),
+					}
+					c.JSON(http.StatusBadRequest, body)
 					return
 				}
 			case "size":
@@ -175,11 +219,25 @@ func Search(c *gin.Context) {
 					case ">":
 						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Gt(fmt.Sprintf("%d", size)))
 					default:
-						c.Status(http.StatusBadRequest)
+						body := ErrorResponse{
+							Type: "Sender",
+							Code: "InvalidSyntax",
+							Message: "Syntax should be size<=(bytes), size<(bytes), size>=(bytes) or size>(bytes) " +
+								"and the bytes must be integer and greater than or equal to 0.",
+							RequestID: requestID.String(),
+						}
+						c.JSON(http.StatusBadRequest, body)
 						return
 					}
 				} else {
-					c.Status(http.StatusBadRequest)
+					body := ErrorResponse{
+						Type: "Sender",
+						Code: "InvalidSyntax",
+						Message: "Syntax should be size<=(bytes), size<(bytes), size>=(bytes) or size>(bytes) " +
+							"and the bytes must be integer and greater than or equal to 0.",
+						RequestID: requestID.String(),
+					}
+					c.JSON(http.StatusBadRequest, body)
 					return
 				}
 			case "etag":
@@ -188,12 +246,47 @@ func Search(c *gin.Context) {
 					boolQuery = boolQuery.Must(elastic.NewTermQuery("meta.etag", group[3]))
 					boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 				} else {
-					c.Status(http.StatusBadRequest)
+					body := ErrorResponse{
+						Type:      "Sender",
+						Code:      "InvalidSyntax",
+						Message:   "Syntax should be etag==(MD5 hash value)",
+						RequestID: requestID.String(),
+					}
+					c.JSON(http.StatusBadRequest, body)
 					return
 				}
 			}
 		} else {
-			c.Status(http.StatusBadRequest)
+			body := ErrorResponse{
+				Type: "Sender",
+				Code: "InvalidSyntax",
+				Message: escape(`Syntax should be one of following
+1. filename:
+
+	name==(filename), the filename must include wildcard character e.g. *txt.
+
+2. contenet type:
+
+	contenttype==(type), the type must include wildcard character e.g. *jpg.
+
+3. lastmodified:
+
+	lastmodified<=(duration or YYYY-MM-DDThh:mm), lastmodified<=(duration or YYYY-MM-DDThh:mm), 
+	lastmodified<=(duration or YYYY-MM-DDThh:mm) or lastmodified<=(duration or YYYY-MM-DDThh:mm).
+
+	Durations can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3m, 2y.
+
+4. size:
+
+	size<=(bytes), size<(bytes), size>=(bytes) or size>(bytes)
+
+5. MD5 hash value:
+
+	etag==(MD5 hash value)
+`),
+				RequestID: requestID.String(),
+			}
+			c.JSON(http.StatusBadRequest, body)
 			return
 		}
 		searchResult, err := client.Search().

@@ -142,12 +142,21 @@ func DeleteQueue(c *gin.Context) {
 
 	db := models.GetDB()
 	queue := models.Resource{}
+	requestID, _ := uuid.NewV4()
 
-	db.Where(models.Resource{Service: models.SQS, AccountID: accountID, Name: queueName}).First(&queue)
+	if db.Where(models.Resource{Service: models.SQS, AccountID: accountID, Name: queueName}).First(&queue).RecordNotFound() {
+		body := ErrorResponse{
+			Type:      "Sender",
+			Code:      "AWS.SimpleQueueService.NonExistentQueue",
+			Message:   "The specified queue does not exist for this wsdl version.",
+			RequestID: requestID.String(),
+		}
+		c.XML(http.StatusBadRequest, body)
+		return
+	}
 
 	db.Delete(&queue)
 
-	requestID, _ := uuid.NewV4()
 	body := DeleteQueueResponse{
 		RequestID: requestID.String(),
 	}
