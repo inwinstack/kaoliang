@@ -55,6 +55,12 @@ func PreflightRequest(c *gin.Context) {
 }
 
 func GetBucketNotification(c *gin.Context) {
+	if _, ok := c.GetQuery("notification"); !ok {
+		// not notification related, just pass
+		ReverseProxy()(c)
+		return
+	}
+
 	userID, errCode := authenticate(c.Request)
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
@@ -73,22 +79,22 @@ func GetBucketNotification(c *gin.Context) {
 		return
 	}
 
-	if _, ok := c.GetQuery("notification"); ok {
-		c.Header("Access-Control-Allow-Origin", "*")
-		db := models.GetDB()
-		nConfig := models.Config{}
-		db.Where(&models.Config{Bucket: bucket}).
-			Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
-			Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
-			First(&nConfig)
-		c.XML(http.StatusOK, nConfig)
-		return
-	}
-
-	ReverseProxy()(c)
+	c.Header("Access-Control-Allow-Origin", "*")
+	db := models.GetDB()
+	nConfig := models.Config{}
+	db.Where(&models.Config{Bucket: bucket}).
+		Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+		Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
+		First(&nConfig)
+	c.XML(http.StatusOK, nConfig)
 }
 
 func PutBucketNotification(c *gin.Context) {
+	if _, ok := c.GetQuery("notification"); !ok {
+		// not notification related, just pass
+		ReverseProxy()(c)
+		return
+	}
 	userID, errCode := authenticate(c.Request)
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
@@ -107,124 +113,119 @@ func PutBucketNotification(c *gin.Context) {
 		return
 	}
 
-	if _, ok := c.GetQuery("notification"); ok {
-		c.Header("Access-Control-Allow-Origin", "*")
-		xmlConfig := models.Config{}
-		data, _ := ioutil.ReadAll(c.Request.Body)
-		xml.Unmarshal(data, &xmlConfig)
-		xmlConfig.Bucket = bucket
-		db := models.GetDB()
+	c.Header("Access-Control-Allow-Origin", "*")
+	xmlConfig := models.Config{}
+	data, _ := ioutil.ReadAll(c.Request.Body)
+	xml.Unmarshal(data, &xmlConfig)
+	xmlConfig.Bucket = bucket
+	db := models.GetDB()
 
-		if err := db.Create(&xmlConfig).Error; err != nil {
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-				if mysqlErr.Number == 1062 {
-					config := models.Config{}
-					db.Where(&models.Config{Bucket: bucket}).
-						Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
-						Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
-						First(&config)
-					if len(xmlConfig.Queues) == 0 && len(xmlConfig.Topics) == 0 {
-						db.Delete(&config)
-						c.Status(http.StatusOK)
+	if err := db.Create(&xmlConfig).Error; err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1062 {
+				config := models.Config{}
+				db.Where(&models.Config{Bucket: bucket}).
+					Preload("Queues.Events").Preload("Queues.Resource").Preload("Queues.Filter.RuleList.Rules").
+					Preload("Topics.Events").Preload("Topics.Resource").Preload("Topics.Filter.RuleList.Rules").
+					First(&config)
+				if len(xmlConfig.Queues) == 0 && len(xmlConfig.Topics) == 0 {
+					db.Delete(&config)
+					c.Status(http.StatusOK)
+					return
+				}
+				for _, xmlQueue := range xmlConfig.Queues {
+					targetResource, err := models.ParseARN(xmlQueue.ARN)
+					if err != nil {
+						writeErrorResponse(c, cmd.ErrARNNotification)
 						return
 					}
-					for _, xmlQueue := range xmlConfig.Queues {
-						targetResource, err := models.ParseARN(xmlQueue.ARN)
-						if err != nil {
-							writeErrorResponse(c, cmd.ErrARNNotification)
-							return
-						}
-						if db.Where(models.Resource{
-							AccountID: targetResource.AccountID,
-							Service:   targetResource.Service,
-							Name:      targetResource.Name,
-						}).First(&targetResource).RecordNotFound() {
-							writeErrorResponse(c, cmd.ErrARNNotification)
-							return
-						}
-
-						queue := models.Queue{}
-						if db.Where(models.Queue{
-							QueueIdentifier: xmlQueue.QueueIdentifier,
-							ConfigID:        config.ID,
-						}).First(&queue).RecordNotFound() {
-							xmlQueue.ResourceID = targetResource.ID
-							xmlQueue.ConfigID = config.ID
-							db.Create(&xmlQueue)
-						} else {
-							queue.ARN = targetResource.ARN()
-							queue.ResourceID = targetResource.ID
-							db.Save(&queue)
-						}
+					if db.Where(models.Resource{
+						AccountID: targetResource.AccountID,
+						Service:   targetResource.Service,
+						Name:      targetResource.Name,
+					}).First(&targetResource).RecordNotFound() {
+						writeErrorResponse(c, cmd.ErrARNNotification)
+						return
 					}
 
-					for _, xmlTopic := range xmlConfig.Topics {
-						targetResource, err := models.ParseARN(xmlTopic.ARN)
-						if err != nil {
-							writeErrorResponse(c, cmd.ErrARNNotification)
-							return
-						}
-						if db.Where(models.Resource{
-							AccountID: targetResource.AccountID,
-							Service:   targetResource.Service,
-							Name:      targetResource.Name,
-						}).First(&targetResource).RecordNotFound() {
-							writeErrorResponse(c, cmd.ErrARNNotification)
-							return
-						}
-
-						topic := models.Topic{}
-						if db.Where(models.Topic{
-							TopicIdentifier: xmlTopic.TopicIdentifier,
-							ConfigID:        config.ID,
-						}).First(&topic).RecordNotFound() {
-							xmlTopic.ResourceID = targetResource.ID
-							xmlTopic.ConfigID = config.ID
-							db.Create(&xmlTopic)
-						} else {
-							topic.ARN = targetResource.ARN()
-							topic.ResourceID = targetResource.ID
-							db.Save(&topic)
-						}
+					queue := models.Queue{}
+					if db.Where(models.Queue{
+						QueueIdentifier: xmlQueue.QueueIdentifier,
+						ConfigID:        config.ID,
+					}).First(&queue).RecordNotFound() {
+						xmlQueue.ResourceID = targetResource.ID
+						xmlQueue.ConfigID = config.ID
+						db.Create(&xmlQueue)
+					} else {
+						queue.ARN = targetResource.ARN()
+						queue.ResourceID = targetResource.ID
+						db.Save(&queue)
 					}
 				}
-			}
-		} else {
-			for _, queue := range xmlConfig.Queues {
-				targetResource, err := models.ParseARN(queue.ARN)
-				if err != nil {
-					writeErrorResponse(c, cmd.ErrARNNotification)
-					return
+
+				for _, xmlTopic := range xmlConfig.Topics {
+					targetResource, err := models.ParseARN(xmlTopic.ARN)
+					if err != nil {
+						writeErrorResponse(c, cmd.ErrARNNotification)
+						return
+					}
+					if db.Where(models.Resource{
+						AccountID: targetResource.AccountID,
+						Service:   targetResource.Service,
+						Name:      targetResource.Name,
+					}).First(&targetResource).RecordNotFound() {
+						writeErrorResponse(c, cmd.ErrARNNotification)
+						return
+					}
+
+					topic := models.Topic{}
+					if db.Where(models.Topic{
+						TopicIdentifier: xmlTopic.TopicIdentifier,
+						ConfigID:        config.ID,
+					}).First(&topic).RecordNotFound() {
+						xmlTopic.ResourceID = targetResource.ID
+						xmlTopic.ConfigID = config.ID
+						db.Create(&xmlTopic)
+					} else {
+						topic.ARN = targetResource.ARN()
+						topic.ResourceID = targetResource.ID
+						db.Save(&topic)
+					}
 				}
-				db.Where(models.Resource{
-					AccountID: targetResource.AccountID,
-					Service:   targetResource.Service,
-					Name:      targetResource.Name,
-				}).First(&targetResource)
-				queue.ResourceID = targetResource.ID
-				db.Save(&queue)
-			}
-			for _, topic := range xmlConfig.Topics {
-				targetResource, err := models.ParseARN(topic.ARN)
-				if err != nil {
-					writeErrorResponse(c, cmd.ErrARNNotification)
-					return
-				}
-				db.Where(models.Resource{
-					AccountID: targetResource.AccountID,
-					Service:   targetResource.Service,
-					Name:      targetResource.Name,
-				}).First(&targetResource)
-				topic.ResourceID = targetResource.ID
-				db.Save(&topic)
 			}
 		}
-
-		c.Status(http.StatusOK)
-		return
+	} else {
+		for _, queue := range xmlConfig.Queues {
+			targetResource, err := models.ParseARN(queue.ARN)
+			if err != nil {
+				writeErrorResponse(c, cmd.ErrARNNotification)
+				return
+			}
+			db.Where(models.Resource{
+				AccountID: targetResource.AccountID,
+				Service:   targetResource.Service,
+				Name:      targetResource.Name,
+			}).First(&targetResource)
+			queue.ResourceID = targetResource.ID
+			db.Save(&queue)
+		}
+		for _, topic := range xmlConfig.Topics {
+			targetResource, err := models.ParseARN(topic.ARN)
+			if err != nil {
+				writeErrorResponse(c, cmd.ErrARNNotification)
+				return
+			}
+			db.Where(models.Resource{
+				AccountID: targetResource.AccountID,
+				Service:   targetResource.Service,
+				Name:      targetResource.Name,
+			}).First(&targetResource)
+			topic.ResourceID = targetResource.ID
+			db.Save(&topic)
+		}
 	}
 
-	ReverseProxy()(c)
+	c.Status(http.StatusOK)
 }
 
 func checkResponse(resp *http.Response, method string, statusCode int) bool {
