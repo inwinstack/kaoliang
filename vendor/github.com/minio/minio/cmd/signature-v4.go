@@ -396,6 +396,7 @@ func GetCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 
 func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 	type Key struct {
+		AccessKey string `json:"access_key"`
 		SecretKey string `json:"secret_key"`
 	}
 
@@ -422,8 +423,14 @@ func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 	output, _ := sh.Command("radosgw-admin", "user", "info", "--uid="+userID).Output()
 	_ = json.Unmarshal(output, &userInfo)
 
-	return userID, auth.Credentials{
-		AccessKey: accessKey,
-		SecretKey: userInfo.Keys[0].SecretKey,
-	}, ErrNone
+	for _, key := range userInfo.Keys {
+		if key.AccessKey == accessKey {
+			return userID, auth.Credentials{
+				AccessKey: key.AccessKey,
+				SecretKey: key.SecretKey,
+			}, ErrNone
+		}
+	}
+
+	return "", auth.Credentials{}, ErrInvalidAccessKeyID
 }
