@@ -110,6 +110,7 @@ func Search(c *gin.Context) {
 		}
 
 		boolQuery := elastic.NewBoolQuery()
+		boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 
 		requestID, _ := uuid.NewV4()
 		re := regexp.MustCompile("(name|lastmodified|contenttype|size|etag)(<=|<|==|=|>=|>)(.+)")
@@ -127,7 +128,6 @@ func Search(c *gin.Context) {
 					return
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("name", group[3]))
-				boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 			case "contenttype":
 				if group[2] != "==" {
 					body := ErrorResponse{
@@ -140,9 +140,7 @@ func Search(c *gin.Context) {
 					return
 				}
 				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("meta.content_type", group[3]))
-				boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 			case "lastmodified":
-				boolQuery = boolQuery.Must(elastic.NewMatchQuery("bucket", bucket))
 				duration := regexp.MustCompile("^[1-9][0-9]*[s|m|h|d|w|M|y]$")
 				matchedDuration := duration.MatchString(group[3])
 				if matchedDuration {
@@ -208,7 +206,6 @@ func Search(c *gin.Context) {
 			case "size":
 				size, err := strconv.Atoi(group[3])
 				if err == nil && size >= 0 {
-					boolQuery = boolQuery.Must(elastic.NewMatchQuery("bucket", bucket))
 					switch group[2] {
 					case "<=":
 						boolQuery = boolQuery.Filter(elastic.NewRangeQuery("meta.size").Lte(fmt.Sprintf("%d", size)))
@@ -244,7 +241,6 @@ func Search(c *gin.Context) {
 				etag := regexp.MustCompile("^[a-f0-9]{32}$")
 				if group[2] == "==" && etag.MatchString(group[3]) {
 					boolQuery = boolQuery.Must(elastic.NewTermQuery("meta.etag", group[3]))
-					boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 				} else {
 					body := ErrorResponse{
 						Type:      "Sender",
