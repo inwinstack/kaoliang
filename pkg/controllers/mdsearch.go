@@ -260,30 +260,9 @@ func Search(c *gin.Context) {
 			body := ErrorResponse{
 				Type: "Sender",
 				Code: "InvalidSyntax",
-				Message: escape(`Syntax should be one of following
-1. filename:
-
-	name==(filename), the filename must include wildcard character e.g. *txt.
-
-2. contenet type:
-
-	contenttype==(type), the type must include wildcard character e.g. *jpg.
-
-3. lastmodified:
-
-	lastmodified<=(duration or YYYY-MM-DDThh:mm), lastmodified<=(duration or YYYY-MM-DDThh:mm), 
-	lastmodified<=(duration or YYYY-MM-DDThh:mm) or lastmodified<=(duration or YYYY-MM-DDThh:mm).
-
-	Durations can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3m, 2y.
-
-4. size:
-
-	size<=(bytes), size<(bytes), size>=(bytes) or size>(bytes)
-
-5. MD5 hash value:
-
-	etag==(MD5 hash value)
-`),
+				Message: escape("Syntax should be one of following: name==(filename), contenttype==(type), " +
+					"lastmodified(< or <= or > or >=)(duration or YYYY-MM-DDThh:mm)," +
+					"size(<= or < or >= or >)(bytes), etag==(MD5 hash value)"),
 				RequestID: requestID.String(),
 			}
 			c.JSON(http.StatusBadRequest, body)
