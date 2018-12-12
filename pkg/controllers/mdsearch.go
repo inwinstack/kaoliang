@@ -121,25 +121,33 @@ func Search(c *gin.Context) {
 					body := ErrorResponse{
 						Type:      "Sender",
 						Code:      "InvalidSyntax",
-						Message:   "Syntax should be name==(filename), the filename must include wildcard character e.g. *txt",
+						Message:   "Syntax should be name==(filename), the filename is a string and support wildcard character e.g. user_*",
 						RequestID: requestID.String(),
 					}
 					c.JSON(http.StatusBadRequest, body)
 					return
 				}
-				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("name", group[3]))
+				if strings.Contains(group[3], "*") {
+					boolQuery = boolQuery.Must(elastic.NewWildcardQuery("name", group[3]))
+				} else {
+					boolQuery = boolQuery.Must(elastic.NewTermQuery("name", group[3]))
+				}
 			case "contenttype":
 				if group[2] != "==" {
 					body := ErrorResponse{
 						Type:      "Sender",
 						Code:      "InvalidSyntax",
-						Message:   "Syntax should be contenttype==(type), the type must include wildcard character e.g. *jpg",
+						Message:   "Syntax should be contenttype==(type), the type is a string and support wildcard character e.g. image/*",
 						RequestID: requestID.String(),
 					}
 					c.JSON(http.StatusBadRequest, body)
 					return
 				}
-				boolQuery = boolQuery.Must(elastic.NewWildcardQuery("meta.content_type", group[3]))
+				if strings.Contains(group[3], "*") {
+					boolQuery = boolQuery.Must(elastic.NewWildcardQuery("meta.content_type", group[3]))
+				} else {
+					boolQuery = boolQuery.Must(elastic.NewTermQuery("meta.content_type", group[3]))
+				}
 			case "lastmodified":
 				duration := regexp.MustCompile("^[1-9][0-9]*[s|m|h|d|w|M|y]$")
 				matchedDuration := duration.MatchString(group[3])
