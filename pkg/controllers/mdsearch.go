@@ -32,6 +32,12 @@ type Object struct {
 		ID          string `json:"ID"`
 		DisplayName string `json:"DisplayName"`
 	} `json:"Owner"`
+	CustomMetadata []CustomMetadataEntry `json:"CustomMetadata"`
+}
+
+type CustomMetadataEntry struct {
+	Name  string `json:"Name"`
+	Value string `json:"Value"`
 }
 
 type SearchResponse struct {
@@ -49,20 +55,26 @@ type ObjectType struct {
 		ID          string `json:"id"`
 	} `json:"owner"`
 	Meta struct {
-		ContentType           string    `json:"content_type"`
-		Etag                  string    `json:"etag"`
-		Mtime                 time.Time `json:"mtime"`
-		Size                  int64     `json:"size"`
-		TailTag               string    `json:"tail_tag"`
-		XAmzAcl               string    `json:"x-amz-acl"`
-		XAmzContentSha256     string    `json:"x-amz-content-sha256"`
-		XAmzCopySource        string    `json:"x-amz-copy-source"`
-		XAmzDate              string    `json:"x-amz-date"`
-		XAmzMetadataDirective string    `json:"x-amz-metadata-directive"`
-		XAmzStorageClass      string    `json:"x-amz-storage-class"`
+		ContentType           string         `json:"content_type"`
+		Etag                  string         `json:"etag"`
+		Mtime                 time.Time      `json:"mtime"`
+		Size                  int64          `json:"size"`
+		TailTag               string         `json:"tail_tag"`
+		XAmzAcl               string         `json:"x-amz-acl"`
+		XAmzContentSha256     string         `json:"x-amz-content-sha256"`
+		XAmzCopySource        string         `json:"x-amz-copy-source"`
+		XAmzDate              string         `json:"x-amz-date"`
+		XAmzMetadataDirective string         `json:"x-amz-metadata-directive"`
+		XAmzStorageClass      string         `json:"x-amz-storage-class"`
+		CustomString          []CustomString `json:"custom-string"`
 	} `json:"meta"`
 	Permissions    []string `json:"permissions"`
 	VersionedEpoch int64    `json:"versioned_epoch"`
+}
+
+type CustomString struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 func escape(s string) (escaped string) {
@@ -132,7 +144,7 @@ func Search(c *gin.Context) {
 	boolQuery := elastic.NewBoolQuery()
 	boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 
-	re := regexp.MustCompile("(name|lastmodified|contenttype|size|etag)(<=|<|==|=|>=|>)(.+)")
+	re := regexp.MustCompile("(name|lastmodified|contenttype|size|etag|x-amz-meta-.+)(<=|<|==|>=|>)(.+)")
 	group := re.FindStringSubmatch(query)
 	if len(group) != 4 {
 		body := makeInvalidSyntaxResponse(requestID.String())
@@ -140,8 +152,8 @@ func Search(c *gin.Context) {
 		return
 	}
 
-	switch group[1] {
-	case "name":
+	switch {
+	case group[1] == "name":
 		if group[2] != "==" {
 			body := ErrorResponse{
 				Type:      "Sender",
@@ -157,7 +169,7 @@ func Search(c *gin.Context) {
 		} else {
 			boolQuery = boolQuery.Must(elastic.NewTermQuery("name", group[3]))
 		}
-	case "contenttype":
+	case group[1] == "contenttype":
 		if group[2] != "==" {
 			body := ErrorResponse{
 				Type:      "Sender",
@@ -173,7 +185,7 @@ func Search(c *gin.Context) {
 		} else {
 			boolQuery = boolQuery.Must(elastic.NewTermQuery("meta.content_type", group[3]))
 		}
-	case "lastmodified":
+	case group[1] == "lastmodified":
 		duration := regexp.MustCompile("^[1-9][0-9]*[s|m|h|d|w|M|y]$")
 		matchedDuration := duration.MatchString(group[3])
 		if matchedDuration {
@@ -236,7 +248,7 @@ func Search(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, body)
 			return
 		}
-	case "size":
+	case group[1] == "size":
 		size, err := strconv.Atoi(group[3])
 		if err == nil && size >= 0 {
 			switch group[2] {
@@ -270,7 +282,7 @@ func Search(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, body)
 			return
 		}
-	case "etag":
+	case group[1] == "etag":
 		etag := regexp.MustCompile("^[a-f0-9]{32}$")
 		if group[2] == "==" && etag.MatchString(group[3]) {
 			boolQuery = boolQuery.Must(elastic.NewTermQuery("meta.etag", group[3]))
@@ -284,11 +296,39 @@ func Search(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, body)
 			return
 		}
+	case strings.Contains(group[1], "x-amz-meta-"):
+		if group[2] != "==" {
+			body := ErrorResponse{
+				Type: "Sender",
+				Code: "InvalidSyntax",
+				Message: "Syntax should be x-amx-meta-(name)==(value), " +
+					"the name should be a string and the value is a string which support wildcard character " +
+					"e.g. x-amz-meta-serialnumber==a9507*",
+				RequestID: requestID.String(),
+			}
+			c.JSON(http.StatusBadRequest, body)
+			return
+		}
+
+		// take custom metadata name from query parameter
+		customMetaName := strings.Replace(group[1], "x-amz-meta-", "", 1)
+
+		// add nested query for metadata
+		bq := elastic.NewBoolQuery()
+		bq = bq.Must(elastic.NewTermQuery("meta.custom-string.name", customMetaName))
+		if strings.Contains(group[3], "*") {
+			bq = bq.Must(elastic.NewWildcardQuery("meta.custom-string.value", group[3]))
+		} else {
+			bq = bq.Must(elastic.NewTermQuery("meta.custom-string.value", group[3]))
+		}
+		q := elastic.NewNestedQuery("meta.custom-string", bq)
+		boolQuery = boolQuery.Must(q)
 	default:
 		body := makeInvalidSyntaxResponse(requestID.String())
 		c.JSON(http.StatusBadRequest, body)
 		return
 	}
+
 	searchResult, err := client.Search().
 		Index(index).
 		Query(boolQuery).
@@ -324,6 +364,11 @@ func Search(c *gin.Context) {
 					d.Owner.ID,
 					d.Owner.DisplayName,
 				},
+				CustomMetadata: []CustomMetadataEntry{},
+			}
+			for _, cs := range d.Meta.CustomString {
+				cme := CustomMetadataEntry{Name: cs.Name, Value: cs.Value}
+				obj.CustomMetadata = append(obj.CustomMetadata, cme)
 			}
 			objs = append(objs, obj)
 		}
