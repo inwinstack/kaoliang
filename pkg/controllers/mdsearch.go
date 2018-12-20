@@ -144,7 +144,7 @@ func Search(c *gin.Context) {
 	boolQuery := elastic.NewBoolQuery()
 	boolQuery = boolQuery.Filter(elastic.NewTermQuery("bucket", bucket))
 
-	re := regexp.MustCompile("(name|lastmodified|contenttype|size|etag|x-amz-meta-.+)(<=|<|==|>=|>)(.+)")
+	re := regexp.MustCompile("^(name|lastmodified|contenttype|size|etag|x-amz-meta-.+)\\s*(<=|<|==|>=|>)\\s*([^\\s]+)$")
 	group := re.FindStringSubmatch(query)
 	if len(group) != 4 {
 		body := makeInvalidSyntaxResponse(requestID.String())
