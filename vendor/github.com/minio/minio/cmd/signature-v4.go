@@ -396,6 +396,7 @@ func GetCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 
 func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 	type Key struct {
+		User      string `json:"user"`
 		AccessKey string `json:"access_key"`
 		SecretKey string `json:"secret_key"`
 	}
@@ -425,7 +426,7 @@ func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 
 	for _, key := range userInfo.Keys {
 		if key.AccessKey == accessKey {
-			return userID, auth.Credentials{
+			return key.User, auth.Credentials{
 				AccessKey: key.AccessKey,
 				SecretKey: key.SecretKey,
 			}, ErrNone

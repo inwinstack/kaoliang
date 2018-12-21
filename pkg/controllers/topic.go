@@ -17,6 +17,7 @@ package controllers
 import (
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio/cmd"
@@ -30,6 +31,11 @@ func CreateTopic(c *gin.Context) {
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
+	}
+
+	tokens := strings.Split(accountID, ":")
+	if len(tokens) > 1 {
+		accountID = tokens[0]
 	}
 
 	topicName := c.PostForm("Name")
@@ -69,6 +75,11 @@ func ListTopics(c *gin.Context) {
 		return
 	}
 
+	tokens := strings.Split(accountID, ":")
+	if len(tokens) > 1 {
+		accountID = tokens[0]
+	}
+
 	db := models.GetDB()
 	topics := []models.Resource{}
 	db.Where(&models.Resource{
@@ -95,6 +106,11 @@ func DeleteTopic(c *gin.Context) {
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
+	}
+
+	tokens := strings.Split(userID, ":")
+	if len(tokens) > 1 {
+		userID = tokens[0]
 	}
 
 	topicARN := c.PostForm("TopicArn")
@@ -131,6 +147,11 @@ func Subscribe(c *gin.Context) {
 		return
 	}
 
+	tokens := strings.Split(accountID, ":")
+	if len(tokens) > 1 {
+		accountID = tokens[0]
+	}
+
 	endpointURI := c.PostForm("Endpoint")
 	protocol := c.PostForm("Protocol")
 	topicARN := c.PostForm("TopicArn")
@@ -162,6 +183,11 @@ func ListSubscriptions(c *gin.Context) {
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
+	}
+
+	tokens := strings.Split(accountID, ":")
+	if len(tokens) > 1 {
+		accountID = tokens[0]
 	}
 
 	topics := []models.Resource{}
@@ -198,6 +224,11 @@ func Unsubscribe(c *gin.Context) {
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
+	}
+
+	tokens := strings.Split(accountID, ":")
+	if len(tokens) > 1 {
+		accountID = tokens[0]
 	}
 
 	subscriptionARN := c.PostForm("SubscriptionArn")
