@@ -350,6 +350,48 @@ func IsAdminUserPath(path string) bool {
 	return path == "/admin/user/" || path == "/admin/user"
 }
 
+func loggingOps(resp *http.Response) {
+	date := resp.Header.Get("date")
+	method := resp.Request.Method
+	bucket, object, _ := getObjectName(resp.Request)
+
+	auth := resp.Request.Header.Get("Authorization")
+	accessKey := ExtractAccessKey(auth)
+	name, _, s3Err := cmd.GetCredentials(accessKey)
+	if s3Err != cmd.ErrNone {
+		fmt.Println(s3Err)
+		return
+	}
+
+	index := strings.LastIndex(name, ":")
+	var uid, subuser string
+	if index == -1 {
+		uid = name
+		subuser = ""
+	} else {
+		uid = name[:index]
+		subuser = name[index+1:]
+	}
+	output, err := sh.Command("radosgw-admin", "user", "info", "--uid", uid).Output()
+	if err != nil {
+		fmt.Println("Can not found the info of uid", uid)
+		return
+	}
+	var user RgwUser
+	err = json.Unmarshal(output, &user)
+	if err != nil {
+		fmt.Println("Can not parse user info", uid)
+		return
+	}
+
+	fmt.Println("project", user.DisplayName)
+	fmt.Println("subuser", subuser)
+	fmt.Println("date", date)
+	fmt.Println("method", method)
+	fmt.Println("bucket", bucket)
+	fmt.Println("object", object)
+}
+
 func ReverseProxy() gin.HandlerFunc {
 	target := utils.GetEnv("TARGET_HOST", "127.0.0.1")
 
