@@ -103,6 +103,11 @@ func Search(c *gin.Context) {
 		return
 	}
 
+	tokens := strings.Split(userID, ":")
+	if len(tokens) > 1 {
+		userID = tokens[0]
+	}
+
 	bucket := c.Param("bucket")
 	users, ok := getBucketUsers(bucket)
 	if !ok {

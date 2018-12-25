@@ -37,6 +37,11 @@ func ListQueues(c *gin.Context) {
 		return
 	}
 
+	tokens := strings.Split(accountID, ":")
+	if len(tokens) > 1 {
+		accountID = tokens[0]
+	}
+
 	db := models.GetDB()
 	var queues []models.Resource
 	db.Where(&models.Resource{
@@ -63,6 +68,11 @@ func CreateQueue(c *gin.Context) {
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
+	}
+
+	tokens := strings.Split(accountID, ":")
+	if len(tokens) > 1 {
+		accountID = tokens[0]
 	}
 
 	var queueName string
@@ -122,6 +132,11 @@ func DeleteQueue(c *gin.Context) {
 		return
 	}
 
+	tokens := strings.Split(userID, ":")
+	if len(tokens) > 1 {
+		userID = tokens[0]
+	}
+
 	var accountID string
 	var queueName string
 	switch c.Request.Method {
@@ -169,6 +184,11 @@ func ReceiveMessage(c *gin.Context) {
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
+	}
+
+	tokens := strings.Split(userID, ":")
+	if len(tokens) > 1 {
+		userID = tokens[0]
 	}
 
 	var accountID string

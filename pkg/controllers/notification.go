@@ -67,6 +67,11 @@ func GetBucketNotification(c *gin.Context) {
 		return
 	}
 
+	tokens := strings.Split(userID, ":")
+	if len(tokens) > 1 {
+		userID = tokens[0]
+	}
+
 	bucket := c.Param("bucket")
 	users, ok := getBucketUsers(bucket)
 	if !ok {
@@ -99,6 +104,11 @@ func PutBucketNotification(c *gin.Context) {
 	if errCode != cmd.ErrNone {
 		writeErrorResponse(c, errCode)
 		return
+	}
+
+	tokens := strings.Split(userID, ":")
+	if len(tokens) > 1 {
+		userID = tokens[0]
 	}
 
 	bucket := c.Param("bucket")
