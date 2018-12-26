@@ -77,20 +77,14 @@ type CustomString struct {
 	Value string `json:"value"`
 }
 
-func escape(s string) (escaped string) {
-	escaped = strings.Replace(s, "\n", "<br>", -1)
-	escaped = strings.Replace(escaped, "\t", " ", -1)
-	return
-}
-
 func makeInvalidSyntaxResponse(requestID string) ErrorResponse {
 
 	return ErrorResponse{
 		Type: "Sender",
 		Code: "InvalidSyntax",
-		Message: escape("Syntax should be one of following: name==(filename), contenttype==(type), " +
-			"lastmodified(< or <= or > or >=)(duration or YYYY-MM-DDThh:mm)," +
-			"size(<= or < or >= or >)(bytes), etag==(MD5 hash value)"),
+		Message: "Syntax should be one of following: name==(filename), contenttype==(type), " +
+			"lastmodified(< or <= or > or >=)(duration or YYYY-MM-DDThh:mm), " +
+			"size(<= or < or >= or >)(bytes), etag==(MD5 hash value)",
 		RequestID: requestID,
 	}
 
@@ -207,9 +201,9 @@ func Search(c *gin.Context) {
 				body := ErrorResponse{
 					Type: "Sender",
 					Code: "InvalidSyntax",
-					Message: escape("Syntax should be lastmodified<=(duration), lastmodified<(duration)," +
-						"lastmodified>=(duration) or lastmodified>(duration)\n\n." +
-						"Duration can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3M, 2y."),
+					Message: "Syntax should be lastmodified<=(duration), lastmodified<(duration), " +
+						"lastmodified>=(duration) or lastmodified>(duration). " +
+						"Duration can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3M, 2y.",
 					RequestID: requestID.String(),
 				}
 				c.JSON(http.StatusBadRequest, body)
@@ -232,7 +226,7 @@ func Search(c *gin.Context) {
 				body := ErrorResponse{
 					Type: "Sender",
 					Code: "InvalidSyntax",
-					Message: "Syntax should be lastmodified<=(YYYY-MM-DDThh:mm), lastmodified<(YYYY-MM-DDThh:mm)," +
+					Message: "Syntax should be lastmodified<=(YYYY-MM-DDThh:mm), lastmodified<(YYYY-MM-DDThh:mm), " +
 						"lastmodified>=(YYYY-MM-DDThh:mm) or lastmodified<=(YYYY-MM-DDThh:mm) e.g. 2018-05-26T03:48",
 					RequestID: requestID.String(),
 				}
@@ -245,9 +239,9 @@ func Search(c *gin.Context) {
 			body := ErrorResponse{
 				Type: "Sender",
 				Code: "InvalidSyntax",
-				Message: escape("Syntanx should be lastmodified<=(duration or YYYY-MM-DDThh:mm), lastmodified<=(duration or YYYY-MM-DDThh:mm)," +
-					"lastmodified<=(duration or YYYY-MM-DDThh:mm) or lastmodified<=(duration or YYYY-MM-DDThh:mm).\n\n" +
-					"Durations can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3m, 2y."),
+				Message: "Syntanx should be lastmodified<=(duration or YYYY-MM-DDThh:mm), lastmodified<=(duration or YYYY-MM-DDThh:mm), " +
+					"lastmodified<=(duration or YYYY-MM-DDThh:mm) or lastmodified<=(duration or YYYY-MM-DDThh:mm). " +
+					"Durations can accept seconds, minutes, hours, days, weeks, months and years. e.g. 30s, 5m, 6h, 1d, 7w, 3m, 2y.",
 				RequestID: requestID.String(),
 			}
 			c.JSON(http.StatusBadRequest, body)
