@@ -26,6 +26,7 @@ import (
 
 	"github.com/ceph/go-ceph/rados"
 	"github.com/ceph/go-ceph/rgw"
+	sh "github.com/codeskyblue/go-sh"
 	"github.com/gin-gonic/gin"
 	"github.com/inwinstack/kaoliang/pkg/utils"
 	"github.com/minio/minio/cmd"
@@ -39,6 +40,7 @@ type RgwUser struct {
 }
 
 type RgwKey struct {
+	User      string `json:"user"`
 	AccessKey string `json:"access_key"`
 	SecretKey string `json:"secret_key"`
 }
@@ -67,8 +69,9 @@ func addNfsExport(body []byte) {
 	if err != nil {
 		return
 	}
-	// only export when create user (same request only add key on second times)
+	// second create request will add key so need to update export obj
 	if len(userData.Keys) > 1 {
+		updateNfsExport(userData.UserId)
 		return
 	}
 	// no bucket can created on this user, should not export
@@ -86,6 +89,30 @@ func addNfsExport(body []byte) {
 	exportObjName := createNfsExportObj(ioctx, &userData)
 	// add export obj path to export list
 	addExportPathToList(ioctx, nfsCfgName, nfsCfgPool, exportObjName)
+}
+
+func updateNfsExport(uid string) {
+	output, err := sh.Command("radosgw-admin", "user", "info", "--uid", uid).Output()
+	if err != nil {
+		fmt.Println("Can not get user info for uid", uid)
+		return
+	}
+	var userData RgwUser
+	err = json.Unmarshal(output, &userData)
+	if err != nil {
+		fmt.Println("Can not parse user info output for uid", uid)
+		return
+	}
+	if len(userData.Keys) <= 0 {
+		fmt.Println("Not found any user keys for uid", uid)
+		return
+	}
+
+	conn, ioctx := connect()
+	defer ioctx.Destroy()
+	defer conn.Shutdown()
+
+	updateNfsExportObj(ioctx, &userData)
 }
 
 func removeNfsExport(userId string) {
@@ -173,6 +200,16 @@ func generateExportId(ioctx *rados.IOContext, prefix string) int {
 	return -1
 }
 
+func loadExportId(ioctx *rados.IOContext, exportObjName string) int {
+	data := make([]byte, 10)
+	size, err := ioctx.GetXattr(exportObjName, "export_id", data)
+	i, err := strconv.Atoi(string(data[:size]))
+	if err != nil {
+		return -1
+	}
+	return i
+}
+
 func createNfsExportObj(ioctx *rados.IOContext, data *RgwUser) string {
 	userId := data.UserId
 	accessKey := data.Keys[0].AccessKey
@@ -193,6 +230,26 @@ func createNfsExportObj(ioctx *rados.IOContext, data *RgwUser) string {
 	return exportObjName
 }
 
+func updateNfsExportObj(ioctx *rados.IOContext, data *RgwUser) {
+	uid := data.UserId
+	user := data.Keys[0].User
+	accessKey := data.Keys[0].AccessKey
+	secretKey := data.Keys[0].SecretKey
+	displayName := data.DisplayName
+
+	// loading export obj template
+	exportTmplName := utils.GetEnv("NFS_EXPORT_TMPL", "export.tmpl")
+	exportTmpl := loadExportTemplate(ioctx, exportTmplName)
+
+	// laoding export id
+	exportObjName := makeExportObjName(uid)
+	exportId := loadExportId(ioctx, exportObjName)
+
+	// generate export obj content and write (no need to update xattr)
+	content := fmt.Sprintf(exportTmpl, exportId, displayName, user, accessKey, secretKey)
+	ioctx.WriteFull(exportObjName, []byte(content))
+}
+
 func removeNfsExportObj(ioctx *rados.IOContext, exportObjName string) {
 	ioctx.Delete(exportObjName)
 }
@@ -203,14 +260,29 @@ func HandleNfsExport(req *http.Request, body []byte) {
 	_, isQuota := req.URL.Query()["quota"]
 	_, isCaps := req.URL.Query()["caps"]
 
-	// only handle user related request
-	if isSubuser || isKey || isQuota || isCaps {
+	if isQuota || isCaps {
 		return
 	}
+
+	// only handle user related request
+	if isSubuser || isKey {
+		uid, isExists := req.URL.Query()["uid"]
+		if !isExists {
+			fmt.Println("Not found uid")
+			return
+		}
+		updateNfsExport(uid[0])
+		return
+	}
+
 	// handle create user
 	if req.Method == "PUT" {
 		addNfsExport(body)
 		return
+	}
+	if req.Method == "POST" {
+		uid, _ := req.URL.Query()["uid"]
+		updateNfsExport(uid[0])
 	}
 	if req.Method == "DELETE" {
 		uid, _ := req.URL.Query()["uid"]
