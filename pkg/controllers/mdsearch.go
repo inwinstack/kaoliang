@@ -102,7 +102,7 @@ func Search(c *gin.Context) {
 		userID = tokens[0]
 	}
 
-	bucket := c.Param("bucket")
+	bucket := strings.TrimSpace(c.Param("bucket"))
 	users, ok := getBucketUsers(bucket)
 	if !ok {
 		writeErrorResponse(c, cmd.ErrNoSuchBucket)
