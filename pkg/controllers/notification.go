@@ -350,48 +350,6 @@ func IsAdminUserPath(path string) bool {
 	return path == "/admin/user/" || path == "/admin/user"
 }
 
-func loggingOps(resp *http.Response) {
-	date := resp.Header.Get("date")
-	method := resp.Request.Method
-	bucket, object, _ := getObjectName(resp.Request)
-
-	auth := resp.Request.Header.Get("Authorization")
-	accessKey := ExtractAccessKey(auth)
-	name, _, s3Err := cmd.GetCredentials(accessKey)
-	if s3Err != cmd.ErrNone {
-		fmt.Println(s3Err)
-		return
-	}
-
-	index := strings.LastIndex(name, ":")
-	var uid, subuser string
-	if index == -1 {
-		uid = name
-		subuser = ""
-	} else {
-		uid = name[:index]
-		subuser = name[index+1:]
-	}
-	output, err := sh.Command("radosgw-admin", "user", "info", "--uid", uid).Output()
-	if err != nil {
-		fmt.Println("Can not found the info of uid", uid)
-		return
-	}
-	var user RgwUser
-	err = json.Unmarshal(output, &user)
-	if err != nil {
-		fmt.Println("Can not parse user info", uid)
-		return
-	}
-
-	fmt.Println("project", user.DisplayName)
-	fmt.Println("subuser", subuser)
-	fmt.Println("date", date)
-	fmt.Println("method", method)
-	fmt.Println("bucket", bucket)
-	fmt.Println("object", object)
-}
-
 func ReverseProxy() gin.HandlerFunc {
 	target := utils.GetEnv("TARGET_HOST", "127.0.0.1")
 
@@ -404,7 +362,6 @@ func ReverseProxy() gin.HandlerFunc {
 		modifyResponse := func(resp *http.Response) error {
 			cfg := config.GetServerConfig()
 			clientReq := resp.Request
-
 			switch {
 			case IsAdminUserPath(clientReq.URL.Path) && resp.StatusCode == 200:
 				b, _ := ioutil.ReadAll(resp.Body)
@@ -412,19 +369,25 @@ func ReverseProxy() gin.HandlerFunc {
 				go HandleNfsExport(clientReq, b)
 				resp.Body = ioutil.NopCloser(bytes.NewReader(b)) // put body back for client response
 				return nil
+			case checkResponse(resp, "GET", 200):
+				go LoggingOps(resp)
+				return nil
 			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0 && cfg.EnableKaoliangCopy == "True":
+				go LoggingOps(resp)
 				return sendEvent(resp, event.ObjectCreatedCopy)
 			case checkResponse(resp, "POST", 200) && len(clientReq.URL.Query()["uploadId"]) != 0:
-				go InheritNfsPermission(*clientReq)
+				go LoggingOps(resp)
+				go InheritNfsPermission(clientReq)
 				return sendEvent(resp, event.ObjectCreatedCompleteMultipartUpload)
 			case len(resp.Header["Etag"]) > 0 && checkResponse(resp, "PUT", 200) && !isMultipartUpload(clientReq):
-				go InheritNfsPermission(*clientReq)
+				go LoggingOps(resp)
+				//go InheritNfsPermission(clientReq)
 				if cfg.EnableKaoliangCreate == "True" {
 					return sendEvent(resp, event.ObjectCreatedPut)
 				}
-
 				return nil
 			case checkResponse(resp, "DELETE", 204) && cfg.EnableKaoliangDelete == "True":
+				go LoggingOps(resp)
 				return sendEvent(resp, event.ObjectRemovedDelete)
 			default:
 				return nil

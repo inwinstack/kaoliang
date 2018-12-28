@@ -219,35 +219,6 @@ func HandleNfsExport(req *http.Request, body []byte) {
 	}
 }
 
-func extractAccessKey(auth string) string {
-	tokens := strings.Split(auth, " ")
-	if len(tokens) != 2 {
-		return ""
-	}
-	credential := strings.Split(tokens[1], ",")[0]
-	creds := strings.Split(strings.TrimSpace(credential), "=")
-	if len(creds) != 2 {
-		return ""
-	}
-	if creds[0] != "Credential" {
-		return ""
-	}
-	credElements := strings.Split(strings.TrimSpace(creds[1]), "/")
-	if len(credElements) < 5 {
-		return ""
-	}
-	accessKey := strings.Join(credElements[:len(credElements)-4], "/")
-	return accessKey
-}
-
-func extractAccessKeyV2(auth string) string {
-	tokens := strings.Split(auth, " ")
-	if len(tokens) != 2 {
-		return ""
-	}
-	return strings.Split(tokens[1], ":")[0]
-}
-
 func setupPermission(parentHandle rgw.RgwFileHandle, path string) {
 	// take current target name
 	index := strings.Index(path, "/")
@@ -284,10 +255,9 @@ func setupPermission(parentHandle rgw.RgwFileHandle, path string) {
 	handle.Release()
 }
 
-func InheritNfsPermission(request http.Request) {
+func InheritNfsPermission(request *http.Request) {
 	// check auth
-	auth := request.Header.Get("Authorization")
-	accessKey := extractAccessKey(auth)
+	accessKey := ExtractAccessKey(request)
 	if accessKey == "" {
 		return
 	}
@@ -330,17 +300,7 @@ func getValue(q url.Values, key string, base int) (uint, error) {
 
 func PatchBucketPermission(c *gin.Context) {
 	// extract access key
-	var accessKey string
-	auth := c.Request.Header.Get("Authorization")
-	authType := cmd.GetRequestAuthType(c.Request)
-	if authType == 7 { // authTypeSignedV2
-		accessKey = extractAccessKeyV2(auth)
-	} else if authType == 6 { // authTypeSigned
-		accessKey = extractAccessKey(auth)
-	} else {
-		writeErrorResponse(c, cmd.ErrAuthorizationError)
-		return
-	}
+	accessKey := ExtractAccessKey(c.Request)
 	// get s3 user id and secret key
 	name, cred, s3Err := cmd.GetCredentials(accessKey)
 	if s3Err != cmd.ErrNone {
