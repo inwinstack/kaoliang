@@ -15,15 +15,16 @@ import (
 )
 
 type OperationLog struct {
-	Project      string    `json:"project"`
-	ProjectId    string    `json:"project_id"`
-	User         string    `json:"user"`
-	Date         time.Time `json:"date"`
-	Method       string    `json:"method"`
-	Bucket       string    `json:"bucket"`
-	Uri          string    `json:"uri"`
-	ByteSend     int       `json:"byte_sned"`
-	ByteRecieved int       `json:"byte_recieved"`
+	Project      string `json:"project"`
+	ProjectId    string `json:"project_id"`
+	User         string `json:"user"`
+	Date         string `json:"date"`
+	Method       string `json:"method"`
+	StatusCode   string `json:"status_code"`
+	Bucket       string `json:"bucket"`
+	Uri          string `json:"uri"`
+	ByteSend     int    `json:"byte_sned"`
+	ByteRecieved int    `json:"byte_recieved"`
 }
 
 func toInteger(contentLength string) int {
@@ -37,7 +38,51 @@ func toInteger(contentLength string) int {
 	return i
 }
 
+func isExists(bucket string) bool {
+	if bucket == "" {
+		return false
+	}
+	output, err := sh.Command("radosgw-admin", "bucket", "list").Output()
+	if err != nil {
+		fmt.Println("Can not get bucket list", bucket)
+		return false
+	}
+	var buckets []string
+	err = json.Unmarshal([]byte(output), &buckets)
+	if err != nil {
+		fmt.Println("Can not parse bucket list", bucket)
+		return false
+	}
+	for _, b := range buckets {
+		if b == bucket {
+			return true
+		}
+	}
+	return false
+}
+
+func extractUserInfo(req *http.Request) (string, string) {
+	accessKey := ExtractAccessKey(req)
+	name, _, _ := cmd.GetCredentials(accessKey)
+	if name == "" {
+		return "", ""
+	}
+
+	index := strings.LastIndex(name, ":")
+	if index == -1 {
+		return name, ""
+	} else {
+		return name[:index], name[index+1:]
+	}
+}
+
 func LoggingOps(resp *http.Response) {
+	// get bucket
+	bucket, _, _ := getObjectName(resp.Request)
+	if bucket == "" {
+		// only record bucket operation
+		return
+	}
 	// get date
 	dateStr := resp.Header.Get("date")
 	date, err := time.Parse(time.RFC1123, dateStr)
@@ -45,26 +90,15 @@ func LoggingOps(resp *http.Response) {
 		date = time.Now()
 	}
 	// get response size
-	byte_send := toInteger(resp.Header.Get("content-length"))
+	byteSend := toInteger(resp.Header.Get("content-length"))
 	// get received size
-	byte_recieved := toInteger(resp.Request.Header.Get("content-length"))
+	byteRecieved := toInteger(resp.Request.Header.Get("content-length"))
 	// get http method
 	method := resp.Request.Method
-	// get bucket and object
-	bucket, _, _ := getObjectName(resp.Request)
+	// get http status
+	statusCode := strconv.Itoa(resp.StatusCode)
 	// get user id (project) and sub user
-	accessKey := ExtractAccessKey(resp.Request)
-	name, _, _ := cmd.GetCredentials(accessKey)
-
-	index := strings.LastIndex(name, ":")
-	var uid, subuser string
-	if index == -1 {
-		uid = name
-		subuser = ""
-	} else {
-		uid = name[:index]
-		subuser = name[index+1:]
-	}
+	uid, subuser := extractUserInfo(resp.Request)
 	// get display name
 	output, err := sh.Command("radosgw-admin", "user", "info", "--uid", uid).Output()
 	if err != nil {
@@ -78,7 +112,7 @@ func LoggingOps(resp *http.Response) {
 		return
 	}
 	// generate ops log json object
-	log := OperationLog{user.DisplayName, uid, subuser, date, method, bucket, resp.Request.RequestURI, byte_send, byte_recieved}
+	log := OperationLog{user.DisplayName, uid, subuser, date.Format(time.RFC3339), method, statusCode, bucket, resp.Request.RequestURI, byteSend, byteRecieved}
 	data, err := json.Marshal(log)
 	if err != nil {
 		fmt.Println("operation log can not be generated", uid)
