@@ -79,7 +79,7 @@ func extractUserInfo(req *http.Request) (string, string) {
 func LoggingOps(resp *http.Response) {
 	// get bucket
 	bucket, _, _ := getObjectName(resp.Request)
-	if bucket == "" {
+	if bucket == "" || bucket == "admin" {
 		// only record bucket operation
 		return
 	}
@@ -99,6 +99,10 @@ func LoggingOps(resp *http.Response) {
 	statusCode := strconv.Itoa(resp.StatusCode)
 	// get user id (project) and sub user
 	uid, subuser := extractUserInfo(resp.Request)
+	if uid == "" {
+		// can not found user by access key
+		return
+	}
 	// get display name
 	output, err := sh.Command("radosgw-admin", "user", "info", "--uid", uid).Output()
 	if err != nil {
