@@ -16,13 +16,12 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 
-	//"strings"
 	"context"
 	"time"
 
@@ -48,6 +47,35 @@ func parseLogName(log string) map[string]string {
 		}
 	}
 	return params
+}
+
+type RadosReader struct {
+	ioctx *rados.IOContext
+	oid   string
+	size  uint64
+	index uint64
+}
+
+func NewRadosReader(ioctx *rados.IOContext, oid string) *RadosReader {
+	stat, err := ioctx.Stat(oid)
+	if err != nil {
+		return nil
+	}
+	size := stat.Size
+	return &RadosReader{ioctx, oid, size, 0}
+}
+
+func (r *RadosReader) eof() bool {
+	return r.index >= r.size
+}
+
+func (r *RadosReader) Read(p []byte) (int, error) {
+	if r.eof() {
+		return 0, io.EOF
+	}
+	len, err := r.ioctx.Read(r.oid, p, r.index)
+	r.index = r.index + uint64(len)
+	return len, err
 }
 
 func main() {
@@ -89,21 +117,16 @@ func main() {
 	}
 
 	ioctx.ListObjects(func(oid string) {
-		stat, err := ioctx.Stat(oid)
-		if err != nil {
-			return
-		}
 		params := parseLogName(oid)
 		if params["Date"] == now {
 			fmt.Println("Not time to dump ops log", oid)
 			return
 		}
-		// load ops log
-		data := make([]byte, stat.Size)
-		ioctx.Read(oid, data, 0)
-
+		// initial ops log object reader
+		reader := NewRadosReader(ioctx, oid)
+		scanner := bufio.NewScanner(reader)
+		// put insert request to bulk for batch upload log
 		request := client.Bulk()
-		scanner := bufio.NewScanner(bytes.NewReader(data))
 		for scanner.Scan() {
 			id, _ := uuid.NewV4()
 			var log controllers.OperationLog
@@ -117,10 +140,13 @@ func main() {
 			bulkReq := elastic.NewBulkIndexRequest().Index(esIndex).Type("log").Id(id.String()).Doc(log)
 			request = request.Add(bulkReq)
 		}
+		if request.NumberOfActions() <= 0 {
+			return
+		}
 		ctx := context.Background()
 		_, err = request.Do(ctx)
 		if err != nil {
-			fmt.Println("Bulk upload is failed %s", err)
+			fmt.Println("Bulk upload failed:", err)
 			return
 		}
 
