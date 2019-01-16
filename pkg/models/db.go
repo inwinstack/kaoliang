@@ -15,6 +15,8 @@ Licensed under the Apache License, Version 2.0 (the "License");
 package models
 
 import (
+	"time"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 
@@ -29,6 +31,7 @@ func SetDB() {
 	if err != nil {
 		panic(err)
 	}
+	db.DB().SetConnMaxLifetime(60 * time.Second)
 }
 
 func Migrate() {
