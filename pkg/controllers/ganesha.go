@@ -176,26 +176,29 @@ func removeExportPathToList(ioctx *rados.IOContext, exportName string, poolName 
 }
 
 func generateExportId(ioctx *rados.IOContext, prefix string) int {
-	exportIds := make(map[string]bool)
+	availExportIds := make(map[string]bool)
+	for i := 1; i <= 65535; i++ {
+		exportId := fmt.Sprint(i)
+		availExportIds[exportId] = true
+	}
+
 	// load existed export id
 	ioctx.ListObjects(func(oid string) {
 		if !strings.HasPrefix(oid, prefix) {
 			return
 		}
-		exportId := make([]byte, 100)
-		len, err := ioctx.GetXattr(oid, "export_id", exportId)
+		usedExportId := make([]byte, 100)
+		len, err := ioctx.GetXattr(oid, "export_id", usedExportId)
 		if err != nil {
 			return
 		}
-		exportIds[string(exportId[0:len])] = true
+		delete(availExportIds, string(usedExportId[0:len]))
 	})
-	retry := 0
-	for retry < 65535 {
-		exportId := random(1, 65535) // 0 is for root
-		if _, existed := exportIds[fmt.Sprint(exportId)]; !existed {
-			return exportId
-		}
-		retry = retry + 1
+
+	for exportId := range availExportIds {
+		// just return first available export id
+		i, _ := strconv.Atoi(exportId)
+		return i
 	}
 	return -1
 }
