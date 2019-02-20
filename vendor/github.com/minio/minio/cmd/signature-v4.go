@@ -29,6 +29,8 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
@@ -38,6 +40,7 @@ import (
 
 	"github.com/ceph/go-ceph/rados"
 	sh "github.com/codeskyblue/go-sh"
+	"github.com/inwinstack/kaoliang/pkg/caches"
 	"github.com/inwinstack/kaoliang/pkg/utils"
 	"github.com/minio/minio-go/pkg/s3utils"
 	"github.com/minio/minio/pkg/auth"
@@ -394,6 +397,25 @@ func GetCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 	return getCredentials(accessKey)
 }
 
+func queryUserInfo(accessKey string) (string, error) {
+	conn, _ := rados.NewConn()
+	conn.ReadDefaultConfigFile()
+	conn.Connect()
+	defer conn.Shutdown()
+
+	ioctx, _ := conn.OpenIOContext(utils.GetEnv("RGW_METADATA_POOL", "default.rgw.meta"))
+	ioctx.SetNamespace("users.keys")
+	stat, err := ioctx.Stat(accessKey)
+	if err != nil {
+		return "", errors.New("not found access key")
+	}
+	data := make([]byte, stat.Size-4)
+	ioctx.Read(accessKey, data, 4)
+	userID := string(data)
+	output, _ := sh.Command("radosgw-admin", "user", "info", "--uid="+userID).Output()
+	return string(output), nil
+}
+
 func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 	type Key struct {
 		User      string `json:"user"`
@@ -405,32 +427,27 @@ func getCredentials(accessKey string) (string, auth.Credentials, APIErrorCode) {
 		Keys []Key `json:"keys"`
 	}
 
-	conn, _ := rados.NewConn()
-	conn.ReadDefaultConfigFile()
-	conn.Connect()
-	defer conn.Shutdown()
-
-	ioctx, _ := conn.OpenIOContext(utils.GetEnv("RGW_METADATA_POOL", "default.rgw.meta"))
-	ioctx.SetNamespace("users.keys")
-	stat, err := ioctx.Stat(accessKey)
-	if err != nil {
-		return "", auth.Credentials{}, ErrInvalidAccessKeyID
+	client := caches.GetRedis()
+	output, err := client.Get(fmt.Sprintf("key:%s", accessKey)).Result()
+	isCached := (err == nil)
+	if !isCached {
+		output, err = queryUserInfo(accessKey)
+		if err != nil {
+			return "", auth.Credentials{}, ErrInvalidAccessKeyID
+		}
 	}
-	data := make([]byte, stat.Size-4)
-	ioctx.Read(accessKey, data, 4)
-	userID := string(data)
 
 	var userInfo UserInfo
-	output, _ := sh.Command("radosgw-admin", "user", "info", "--uid="+userID).Output()
-	_ = json.Unmarshal(output, &userInfo)
-
+	_ = json.Unmarshal([]byte(output), &userInfo)
 	for _, key := range userInfo.Keys {
-		if key.AccessKey == accessKey {
-			return key.User, auth.Credentials{
-				AccessKey: key.AccessKey,
-				SecretKey: key.SecretKey,
-			}, ErrNone
+		if key.AccessKey != accessKey {
+			continue
 		}
+		client.Set(fmt.Sprintf("key:%s", key.AccessKey), output, 0)
+		return key.User, auth.Credentials{
+			AccessKey: key.AccessKey,
+			SecretKey: key.SecretKey,
+		}, ErrNone
 	}
 
 	return "", auth.Credentials{}, ErrInvalidAccessKeyID

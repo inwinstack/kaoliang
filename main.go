@@ -20,6 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
+	"github.com/inwinstack/kaoliang/pkg/caches"
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/controllers"
 	"github.com/inwinstack/kaoliang/pkg/models"
@@ -36,6 +37,7 @@ func init() {
 	models.Migrate()
 	models.SetCache()
 	models.SetCelery()
+	caches.SetRedis()
 }
 
 func main() {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ceph/go-ceph/rados"
 	sh "github.com/codeskyblue/go-sh"
+	"github.com/inwinstack/kaoliang/pkg/caches"
 	"github.com/inwinstack/kaoliang/pkg/utils"
 	"github.com/minio/minio/cmd"
 )
@@ -61,19 +62,41 @@ func isExists(bucket string) bool {
 	return false
 }
 
-func extractUserInfo(req *http.Request) (string, string) {
+func extractUserInfo(req *http.Request) (string, string, string) {
 	accessKey := ExtractAccessKey(req)
 	name, _, _ := cmd.GetCredentials(accessKey)
 	if name == "" {
-		return "", ""
+		return "", "", ""
 	}
 
+	var uid, subuser string
 	index := strings.LastIndex(name, ":")
 	if index == -1 {
-		return name, ""
+		uid = name
+		subuser = ""
 	} else {
-		return name[:index], name[index+1:]
+		uid = name[:index]
+		subuser = name[index+1:]
 	}
+
+	client := caches.GetRedis()
+	out, err := client.Get(fmt.Sprintf("key:%s", accessKey)).Result()
+
+	var output []byte
+	if err == nil {
+		output = []byte(out)
+	} else {
+		output, err = sh.Command("radosgw-admin", "user", "info", "--uid", uid).Output()
+		if err != nil {
+			return "", "", ""
+		}
+	}
+	var user RgwUser
+	err = json.Unmarshal(output, &user)
+	if err != nil {
+		return "", "", ""
+	}
+	return uid, subuser, user.DisplayName
 }
 
 func LoggingOps(resp *http.Response) {
@@ -97,22 +120,14 @@ func LoggingOps(resp *http.Response) {
 	method := resp.Request.Method
 	// get http status
 	statusCode := strconv.Itoa(resp.StatusCode)
-	// get user id (project) and sub user
-	uid, subuser := extractUserInfo(resp.Request)
-	// get display name
-	output, err := sh.Command("radosgw-admin", "user", "info", "--uid", uid).Output()
-	if err != nil {
-		fmt.Println("Can not found the info of uid", uid)
-		return
-	}
-	var user RgwUser
-	err = json.Unmarshal(output, &user)
-	if err != nil {
-		fmt.Println("Can not parse user info", uid)
+	// get user id (project), sub user and display name (project name)
+	uid, subuser, displayName := extractUserInfo(resp.Request)
+	if uid == "" && subuser == "" && displayName == "" {
+		// no info
 		return
 	}
 	// generate ops log json object
-	log := OperationLog{user.DisplayName, uid, subuser, date.Format(time.RFC3339), method, statusCode, bucket, resp.Request.RequestURI, byteSend, byteRecieved}
+	log := OperationLog{displayName, uid, subuser, date.Format(time.RFC3339), method, statusCode, bucket, resp.Request.RequestURI, byteSend, byteRecieved}
 	data, err := json.Marshal(log)
 	if err != nil {
 		fmt.Println("operation log can not be generated", uid)
