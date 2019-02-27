@@ -22,11 +22,12 @@ func PostForm(c *gin.Context, key string) string {
 }
 
 func ExtractAccessKeyV4(auth string) string {
-	tokens := strings.Split(auth, " ")
-	if len(tokens) != 2 {
+	auth = strings.Replace(auth, " ", "", -1)
+	if !strings.Contains(auth, "AWS4-HMAC-SHA256") {
 		return ""
 	}
-	credential := strings.Split(tokens[1], ",")[0]
+	auth = strings.Replace(auth, "AWS4-HMAC-SHA256", "", 1)
+	credential := strings.Split(auth, ",")[0]
 	creds := strings.Split(strings.TrimSpace(credential), "=")
 	if len(creds) != 2 {
 		return ""
