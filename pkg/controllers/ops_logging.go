@@ -64,6 +64,9 @@ func isExists(bucket string) bool {
 
 func extractUserInfo(req *http.Request) (string, string, string) {
 	accessKey := ExtractAccessKey(req)
+	if accessKey == "" {
+		return "", "", ""
+	}
 	name, _, _ := cmd.GetCredentials(accessKey)
 	if name == "" {
 		return "", "", ""

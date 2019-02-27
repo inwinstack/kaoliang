@@ -376,6 +376,10 @@ func getValue(q url.Values, key string, base int) (uint, error) {
 func PatchBucketPermission(c *gin.Context) {
 	// extract access key
 	accessKey := ExtractAccessKey(c.Request)
+	if accessKey == "" {
+		writeErrorResponse(c, cmd.ErrInvalidAccessKeyID)
+		return
+	}
 	// get s3 user id and secret key
 	name, cred, s3Err := cmd.GetCredentials(accessKey)
 	if s3Err != cmd.ErrNone {
