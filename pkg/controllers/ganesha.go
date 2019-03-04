@@ -227,7 +227,7 @@ func createNfsExportObj(ioctx *rados.IOContext, data *RgwUser) string {
 	export := fmt.Sprintf(exportTmpl, exportId, displayName, userId, accessKey, secretKey)
 	ioctx.WriteFull(exportObjName, []byte(export))
 
-	// put pseudo (export path) to xattr
+	// put pseudo (export path) and export_id to xattr
 	ioctx.SetXattr(exportObjName, "pseudo", []byte(displayName))
 	ioctx.SetXattr(exportObjName, "export_id", []byte(fmt.Sprint(exportId)))
 	return exportObjName
@@ -248,9 +248,13 @@ func updateNfsExportObj(ioctx *rados.IOContext, data *RgwUser) {
 	exportObjName := makeExportObjName(uid)
 	exportId := loadExportId(ioctx, exportObjName)
 
-	// generate export obj content and write (no need to update xattr)
+	// generate export obj content and write
 	content := fmt.Sprintf(exportTmpl, exportId, displayName, user, accessKey, secretKey)
 	ioctx.WriteFull(exportObjName, []byte(content))
+
+	// put pseudo (export path) and export to xattr
+	ioctx.SetXattr(exportObjName, "pseudo", []byte(displayName))
+	ioctx.SetXattr(exportObjName, "export_id", []byte(fmt.Sprint(exportId)))
 }
 
 func removeNfsExportObj(ioctx *rados.IOContext, exportObjName string) {
