@@ -16,7 +16,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/inwinstack/kaoliang/pkg/config"
@@ -37,22 +36,8 @@ func init() {
 	models.SetCache()
 }
 
-func setOriginHeader() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-	}
-}
-
 func main() {
 	r := gin.Default()
-	r.Use(setOriginHeader())
-
-	r.OPTIONS("/", func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE")
-		c.Header("Access-Control-Allow-Headers", "x-amz-content-sha256,x-amz-date,authorization,host,x-amz-user-agent")
-
-		c.Status(http.StatusNoContent)
-	})
 
 	r.POST("/", func(c *gin.Context) {
 		action := controllers.PostForm(c, "Action")

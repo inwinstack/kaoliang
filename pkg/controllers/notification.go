@@ -40,20 +40,6 @@ import (
 
 var errNoSuchNotifications = errors.New("The specified bucket does not have bucket notifications")
 
-func PreflightRequest(c *gin.Context) {
-	_, notification := c.GetQuery("notification")
-
-	if notification {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE")
-		c.Header("Access-Control-Allow-Headers", "content-type,x-amz-content-sha256,x-amz-date,authorization,host,x-amz-user-agent")
-
-		c.Status(http.StatusNoContent)
-	} else {
-		ReverseProxy()(c)
-	}
-}
-
 func GetBucketNotification(c *gin.Context) {
 	if _, ok := c.GetQuery("notification"); !ok {
 		// not notification related, just pass
@@ -84,7 +70,6 @@ func GetBucketNotification(c *gin.Context) {
 		return
 	}
 
-	c.Header("Access-Control-Allow-Origin", "*")
 	db := models.GetDB()
 	nConfig := models.Config{}
 	db.Where(&models.Config{Bucket: bucket}).
@@ -123,7 +108,6 @@ func PutBucketNotification(c *gin.Context) {
 		return
 	}
 
-	c.Header("Access-Control-Allow-Origin", "*")
 	xmlConfig := models.Config{}
 	data, _ := ioutil.ReadAll(c.Request.Body)
 	xml.Unmarshal(data, &xmlConfig)
