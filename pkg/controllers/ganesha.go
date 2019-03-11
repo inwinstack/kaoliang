@@ -267,18 +267,7 @@ func HandleNfsExport(req *http.Request, body []byte) {
 	_, isQuota := req.URL.Query()["quota"]
 	_, isCaps := req.URL.Query()["caps"]
 
-	if isQuota || isCaps {
-		return
-	}
-
-	// only handle user related request
-	if isSubuser || isKey {
-		uid, isExists := req.URL.Query()["uid"]
-		if !isExists {
-			fmt.Println("Not found uid")
-			return
-		}
-		updateNfsExport(uid[0])
+	if isQuota || isCaps || isQuota || isKey {
 		return
 	}
 
@@ -286,10 +275,6 @@ func HandleNfsExport(req *http.Request, body []byte) {
 	if req.Method == "PUT" {
 		addNfsExport(body)
 		return
-	}
-	if req.Method == "POST" {
-		uid, _ := req.URL.Query()["uid"]
-		updateNfsExport(uid[0])
 	}
 	if req.Method == "DELETE" {
 		uid, _ := req.URL.Query()["uid"]
