@@ -267,7 +267,7 @@ func HandleNfsExport(req *http.Request, body []byte) {
 	_, isQuota := req.URL.Query()["quota"]
 	_, isCaps := req.URL.Query()["caps"]
 
-	if isQuota || isCaps || isQuota || isKey {
+	if isSubuser || isCaps || isQuota || isKey {
 		return
 	}
 
