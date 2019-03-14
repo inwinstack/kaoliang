@@ -27,6 +27,7 @@ import (
 	"github.com/minio/minio/cmd"
 	"github.com/satori/go.uuid"
 
+	"github.com/inwinstack/kaoliang/pkg/caches"
 	"github.com/inwinstack/kaoliang/pkg/models"
 )
 
@@ -232,7 +233,7 @@ func ReceiveMessage(c *gin.Context) {
 		maxMsgNum = 10
 	}
 
-	redis := models.GetCache()
+	redis := caches.GetRedis()
 	key := fmt.Sprintf("sqs:%s:%s", accountID, queueName)
 	bodys, _ := redis.LRange(key, 0, int64(maxMsgNum-1)).Result()
 	redis.LTrim(key, int64(maxMsgNum), -1)
