@@ -22,9 +22,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/ceph/go-ceph/rados"
 	"github.com/godbus/dbus"
@@ -36,7 +38,7 @@ func findPidByName(name string) int {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		log.Fatal(err)
+		return -1
 	}
 	processList := out.String()
 	scanner := bufio.NewScanner(strings.NewReader(processList))
@@ -59,14 +61,12 @@ type Export struct {
 func listEnabledExport() []Export {
 	conn, err := dbus.SystemBus()
 	if err != nil {
-		log.Fatal(err)
 		return nil
 	}
 	// as dbus-send
 	bo := conn.Object("org.ganesha.nfsd", "/org/ganesha/nfsd/ExportMgr")
 	call := bo.Call("org.ganesha.nfsd.exportmgr.ShowExports", 0)
 	if call.Err != nil {
-		log.Fatal(err)
 		return nil
 	}
 	exported := make([]Export, 0)
@@ -138,13 +138,13 @@ func getExport(userId, poolName, target string) []byte {
 func disableExport(export Export) {
 	conn, err := dbus.SystemBus()
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	// as dbus-send
 	bo := conn.Object("org.ganesha.nfsd", "/org/ganesha/nfsd/ExportMgr")
 	call := bo.Call("org.ganesha.nfsd.exportmgr.RemoveExport", 0, export.Id)
 	if call.Err != nil {
-		log.Fatal(err)
+		return
 	}
 }
 
@@ -153,7 +153,84 @@ func reloadExport(pid int) {
 	process, _ := os.FindProcess(pid)
 	err := process.Signal(syscall.SIGHUP)
 	if err != nil {
-		log.Fatal(err)
+		return
+	}
+}
+
+func needToUpdate(objectMtime int64, exportPath string) bool {
+	// check local export list is exists
+	fi, err := os.Stat(exportPath)
+	if os.IsNotExist(err) {
+		return true
+	}
+
+	mtime := fi.ModTime().Unix()
+	return objectMtime > mtime
+}
+
+func execute(user, poolname, exportPath string) {
+	// connect to pool
+	conn, err := rados.NewConnWithUser(user)
+	if err != nil {
+		log.Fatal("Initialize rados connection failed: ", err)
+	}
+	err = conn.ReadDefaultConfigFile()
+	if err != nil {
+		log.Fatal("Read default config failed: ", err)
+	}
+	err = conn.Connect()
+	if err != nil {
+		log.Fatal("Rados connect failed: ", err)
+	}
+	defer conn.Shutdown()
+	ioctx, err := conn.OpenIOContext(poolname)
+	if err != nil {
+		log.Fatal("Connect pool %s failed", poolname)
+	}
+	defer ioctx.Destroy()
+
+	// take nfs-ganesha process id
+	processName := "ganesha.nfsd"
+	pid := findPidByName(processName)
+	if pid == -1 {
+		log.Printf("Process %s is not found", processName)
+		return
+	}
+	// get the stats from export list object
+	stat, err := ioctx.Stat("export")
+	if err != nil {
+		log.Printf("can not get the stats from export list object")
+		return
+	}
+	// check export list object is modified or not
+	if !needToUpdate(stat.ModTime.Unix(), exportPath) {
+		return
+	}
+
+	log.Printf("update local export list")
+	// update local export list
+	data := getExport(user, poolname, "export")
+	ioutil.WriteFile(exportPath, data, 0644)
+
+	log.Printf("update the exports of nfs-ganesha")
+	// send signal to reload exports (add only, no update and delete)
+	reloadExport(pid)
+
+	// load configured export path from rados
+	paths := loadConfiguredPaths(user, poolname, "export_")
+
+	// list enabled export on this host
+	exports := listEnabledExport()
+	if exports == nil {
+		return
+	}
+
+	// disable export if not configured
+	for _, export := range exports {
+		if !isExists(export.Path, paths) {
+			// disable export on this machine
+			disableExport(export)
+		}
 	}
 }
 
@@ -164,40 +241,34 @@ func main() {
 		return
 	}
 
-	if len(os.Args) != 5 || os.Args[1] == "help" || os.Args[1] != "start" {
-		fmt.Printf("Usage: %s [start|help] <ceph user> <pool name> <export path>\n", os.Args[0])
+	if len(os.Args) != 6 || os.Args[1] == "help" || os.Args[1] != "start" {
+		fmt.Printf("Usage: %s [start|help] <ceph user> <pool name> <export path> <sleep milliseconds>\n", os.Args[0])
 		return
 	}
 
 	user := os.Args[2]
 	poolname := os.Args[3]
 	exportPath := os.Args[4]
+	sleepTimeMs, err := strconv.Atoi(os.Args[5])
 
-	// take nfs-ganesha process id
-	processName := "ganesha.nfsd"
-	pid := findPidByName(processName)
-	if pid == -1 {
-		fmt.Printf("Process %s is not found\n", processName)
+	if err != nil || sleepTimeMs <= 0 {
+		fmt.Printf("Usage: %s [start|help] <ceph user> <pool name> <export path> <sleep milliseconds>\n", os.Args[0])
 		return
 	}
 
-	data := getExport(user, poolname, "export")
-	ioutil.WriteFile(exportPath, data, 0644)
+	// setup signal channel
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM)
 
-	// send signal to reload exports (add only, no update and delete)
-	reloadExport(pid)
+	// exit if signal recieved
+	go func() {
+		s := <-sigs
+		log.Printf("RECEIVED SIGNAL: %s", s)
+		os.Exit(0)
+	}()
 
-	// load configured export path from rados
-	paths := loadConfiguredPaths(user, poolname, "export_")
-
-	// list enabled export on this host
-	exports := listEnabledExport()
-
-	// disable export if not configured
-	for _, export := range exports {
-		if !isExists(export.Path, paths) {
-			// disable export on this machine
-			disableExport(export)
-		}
+	for {
+		execute(user, poolname, exportPath)
+		time.Sleep(time.Millisecond * time.Duration(sleepTimeMs))
 	}
 }
