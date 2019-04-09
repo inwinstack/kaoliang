@@ -69,11 +69,6 @@ func addNfsExport(body []byte) {
 	if err != nil {
 		return
 	}
-	// second create request will add key so need to update export obj
-	if len(userData.Keys) > 1 {
-		updateNfsExport(userData.UserId)
-		return
-	}
 	// no bucket can created on this user, should not export
 	if userData.MaxBuckets == -1 {
 		return
