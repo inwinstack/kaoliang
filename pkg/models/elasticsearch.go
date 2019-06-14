@@ -11,6 +11,7 @@ func SetElasticsearch() {
 	var err error
 	elsClient, err = elastic.NewClient(
 		elastic.SetURL(utils.GetEnv("ELS_URL", "http://localhost:9200")),
+		elastic.SetSniff(false),
 	)
 	if err != nil {
 		panic(err)
