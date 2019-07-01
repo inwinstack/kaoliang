@@ -147,7 +147,10 @@ func LoggingOps(resp *http.Response) {
 	conn.ReadDefaultConfigFile()
 	conn.Connect()
 	defer conn.Shutdown()
-	ioctx, _ := conn.OpenIOContext(poolName)
+	ioctx, err := conn.OpenIOContext(poolName)
+	if err != nil {
+		return	
+	}
 	defer ioctx.Destroy()
 
 	ioctx.Append(logObjName, data)
