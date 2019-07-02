@@ -348,10 +348,11 @@ func ReverseProxy() gin.HandlerFunc {
 			clientReq := resp.Request
 			go LoggingOps(resp)
 			switch {
-			case IsAdminUserPath(clientReq.URL.Path) && resp.StatusCode == 200:
+			case IsAdminUserPath(clientReq.URL.Path):
+				statusCode := resp.StatusCode
 				b, _ := ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
-				go HandleNfsExport(clientReq, b)
+				go HandleNfsExport(clientReq, b, statusCode)
 				resp.Body = ioutil.NopCloser(bytes.NewReader(b)) // put body back for client response
 				return nil
 			case len(clientReq.Header["X-Amz-Copy-Source"]) > 0 && cfg.EnableKaoliangCopy == "True":

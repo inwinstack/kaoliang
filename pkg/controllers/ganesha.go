@@ -256,7 +256,7 @@ func removeNfsExportObj(ioctx *rados.IOContext, exportObjName string) {
 	ioctx.Delete(exportObjName)
 }
 
-func HandleNfsExport(req *http.Request, body []byte) {
+func HandleNfsExport(req *http.Request, body []byte, statusCode int) {
 	_, isSubuser := req.URL.Query()["subuser"]
 	_, isKey := req.URL.Query()["key"]
 	_, isQuota := req.URL.Query()["quota"]
@@ -267,11 +267,12 @@ func HandleNfsExport(req *http.Request, body []byte) {
 	}
 
 	// handle create user
-	if req.Method == "PUT" {
+	if req.Method == "PUT" && statusCode == 200 {
 		addNfsExport(body)
 		return
 	}
-	if req.Method == "DELETE" {
+	// handle delete user even if user is not exists
+	if req.Method == "DELETE" && (statusCode == 200 || statusCode == 404) {
 		uid, _ := req.URL.Query()["uid"]
 		removeNfsExport(uid[0])
 		return
