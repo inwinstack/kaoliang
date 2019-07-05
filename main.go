@@ -48,6 +48,7 @@ func main() {
 	r.PUT("/:bucket", controllers.PutBucketNotification)
 	r.PATCH("/:bucket", controllers.PatchBucketPermission)
 	r.PATCH("/:bucket/", controllers.PatchBucketPermission)
+	r.POST("/objects", controllers.MoveObjects)
 
 	r.NoRoute(controllers.ReverseProxy())
 
