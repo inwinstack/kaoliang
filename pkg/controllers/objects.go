@@ -180,6 +180,7 @@ func MoveObjects(c *gin.Context) {
 			respBody.Error = append(respBody.Error, MoveError{
 				Src:     result.Src,
 				Dest:    result.Dest,
+				Code:    result.Code,
 				Message: result.Message,
 			})
 		}
