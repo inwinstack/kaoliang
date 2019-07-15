@@ -68,7 +68,7 @@ func writeErrorResult(result *MoveResult, err error) {
 			result.Message = aerr.Error()
 		default:
 			result.Code = aerr.Code()
-			result.Message = aerr.Message()
+			result.Message = aerr.Error()
 		}
 	} else {
 		// Print the error, cast err to awserr.Error to get the Code and
@@ -180,6 +180,7 @@ func MoveObjects(c *gin.Context) {
 			respBody.Error = append(respBody.Error, MoveError{
 				Src:     result.Src,
 				Dest:    result.Dest,
+				Code:    result.Code,
 				Message: result.Message,
 			})
 		}
