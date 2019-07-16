@@ -163,6 +163,12 @@
 			"revisionTime": "2018-01-23T06:50:59Z"
 		},
 		{
+			"checksumSHA1": "q9bsaNA05ney3eon3nKAE+eLwO4=",
+			"path": "github.com/fvbock/endless",
+			"revision": "447134032cb6a86814f570257390a379982dfc61",
+			"revisionTime": "2017-01-09T17:00:31Z"
+		},
+		{
 			"checksumSHA1": "2UmMbNHc8FBr98mJFN1k8ISOIHk=",
 			"path": "github.com/garyburd/redigo/internal",
 			"revision": "569eae59ada904ea8db7a225c2b47165af08735a",
