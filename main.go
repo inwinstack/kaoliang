@@ -15,8 +15,13 @@ Licensed under the Apache License, Version 2.0 (the "License");
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"log"
+	"strconv"
+	"syscall"
 
+	"github.com/fvbock/endless"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -24,6 +29,7 @@ import (
 	"github.com/inwinstack/kaoliang/pkg/config"
 	"github.com/inwinstack/kaoliang/pkg/controllers"
 	"github.com/inwinstack/kaoliang/pkg/models"
+	"github.com/inwinstack/kaoliang/pkg/utils"
 )
 
 func init() {
@@ -52,5 +58,14 @@ func main() {
 
 	r.NoRoute(controllers.ReverseProxy())
 
-	r.Run()
+	server := endless.NewServer(fmt.Sprintf(":%s", utils.GetEnv("PORT", "8003")), r)
+	server.BeforeBegin = func(add string) {
+		pid := syscall.Getpid()
+		err := ioutil.WriteFile("/var/run/kaoliang/s3.pid", []byte(strconv.Itoa(pid)), 0644)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	server.ListenAndServe()
 }
